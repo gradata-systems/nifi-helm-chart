@@ -1,0 +1,44 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "nifi.fullname" . }}
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    nginx.ingress.kubernetes.io/affinity: cookie
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hostName }}
+        {{- range $i, $e := until (int .Values.nodeCount) }}
+        - {{ printf "%s%d.%s" $.Values.ingress.nodeBaseHostName $i $.Values.ingress.hostName }}
+        {{- end }}
+      secretName: {{ include "nifi.fullname" . }}-tls
+  rules:
+    - host: {{ .Values.ingress.hostName }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "nifi.fullname" . }}-http
+                port:
+                  name: https
+    {{- range $i, $e := until (int .Values.nodeCount) }}
+    - host: {{ printf "%s%d.%s" $.Values.ingress.nodeBaseHostName $i $.Values.ingress.hostName }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "nifi.fullname" $ }}-node-{{ $i }}
+                port:
+                  name: https
+    {{- end }}

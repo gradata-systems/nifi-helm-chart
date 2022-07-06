@@ -1,0 +1,25 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "nifi-registry.fullname" . }}
+  labels:
+    {{- include "nifi-registry.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "nifi-registry.fullname" . }}-tls
+  commonName: {{ include "nifi-registry.fullname" . }}
+  dnsNames:
+    - {{ include "nifi-registry.fullname" . }}
+  usages:
+    - server auth
+    - client auth
+  {{- with .Values.global.tls.certificate }}
+  duration: {{ .duration }}
+  renewBefore: {{ .renewBefore }}
+  keystores:
+    pkcs12:
+      create: true
+      passwordSecretRef:
+        {{- toYaml .keystorePasswordSecretRef | nindent 8 }}
+  issuerRef:
+    {{- toYaml .issuerRef | nindent 4 }}
+  {{- end }}

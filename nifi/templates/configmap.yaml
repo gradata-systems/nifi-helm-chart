@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nifi.fullname" . }}
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+data:
+  flow.xml:
+    {{- (tpl (.Files.Get "config/flow.xml") .) | nindent 4 }}
+  custom-startup.sh: |
+    #!/bin/bash -e
+
+    scripts_dir='/opt/nifi/scripts'
+    [ -f "${scripts_dir}/common.sh" ] && . "${scripts_dir}/common.sh"
+
+    host_name="${HOSTNAME}.{{ include "nifi.fullname" . }}"
+    pod_index=$(echo ${HOSTNAME} | sed -E 's/^.*([0-9]+)$/\1/g')
+
+    prop_replace 'nifi.web.https.host' "${host_name}"
+
+    export NIFI_WEB_HTTPS_HOST="${host_name}"
+    export NIFI_WEB_PROXY_HOST="{{ .Values.ingress.hostName }},{{ .Values.ingress.nodeBaseHostName }}${pod_index}.{{ .Values.ingress.hostName }},${host_name}.{{ .Release.Namespace }}"
+
+    {{- /* Replace properties not exposed by environment variables */}}
+    {{- if .Values.cluster.enabled }}
+    export NIFI_CLUSTER_ADDRESS="${host_name}"
+    prop_replace 'nifi.zookeeper.client.secure' 'true'
+    prop_replace 'nifi.zookeeper.security.keystore' "${KEYSTORE_PATH}"
+    prop_replace 'nifi.zookeeper.security.keystoreType' "${KEYSTORE_TYPE}"
+    prop_replace 'nifi.zookeeper.security.keystorePasswd' "${KEYSTORE_PASSWORD}"
+    prop_replace 'nifi.zookeeper.security.truststore' "${TRUSTSTORE_PATH}"
+    prop_replace 'nifi.zookeeper.security.truststoreType' "${TRUSTSTORE_TYPE}"
+    prop_replace 'nifi.zookeeper.security.truststorePasswd' "${TRUSTSTORE_PASSWORD}"
+
+    {{- /* Grant nodes cluster permissions */}}
+    list_identities () {
+      node_identities=""
+      for (( i = 0; i < {{ .Values.nodeCount }}; i++ )); do
+        node_dn="CN={{ include "nifi.fullname" . }}-${i}.{{ include "nifi.fullname" . }}"
+        node_identities="${node_identities}<property name=\"$1 Node-${i}\">${node_dn}</property>\n"
+      done
+      sed -i -E "s|(<property name=\"$1 1\">.*</property>)|\1\n${node_identities}|g" ${NIFI_HOME}/conf/authorizers.xml
+    }
+
+    list_identities "Node Identity"
+    list_identities "Initial User Identity"
+
+    {{- /* Generate a TLS cert for this node from the CSI-provided certificates and private key */}}
+    cert_dir='/opt/certs'
+    tls_dir='/opt/tls'
+    rm -f $tls_dir/*
+    openssl pkcs12 -export \
+      -in $cert_dir/tls.crt \
+      -inkey $cert_dir/tls.key \
+      -CAfile $cert_dir/ca.crt \
+      -passout "pass:${KEYSTORE_PASSWORD}" \
+      -out $tls_dir/keystore.p12
+    keytool -import -noprompt -trustcacerts \
+      -file $cert_dir/ca.crt \
+      -storepass "${TRUSTSTORE_PASSWORD}" \
+      -destkeystore $tls_dir/truststore.p12 \
+      -deststoretype pkcs12
+    {{- end }}
+
+    {{- range $key, $value := .Values.extraConfig.nifiProperties }}
+    prop_replace {{ $key | squote }} {{ $value | quote }}
+    {{- end }}
+
+    #sleep 1000000
+
+    exec $scripts_dir/start.sh

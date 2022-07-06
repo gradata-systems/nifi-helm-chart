@@ -1,0 +1,111 @@
+# Default values for nifi.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  containerRegistry: ""
+
+  tls:
+    certificate:
+      duration: 8760h # 365 days
+      renewBefore: 168h # 7 days
+      keystorePasswordSecretRef:
+        name: ""
+        key: password
+      issuerRef:
+        name: ""
+        kind: ClusterIssuer
+
+  ldap:
+    url: "" # ldaps://dc.example.com:636
+    tlsProtocol: TLSv1.2
+    authenticationStrategy: LDAPS # ANONYMOUS|SIMPLE|LDAPS|START_TLS
+    identityStrategy: USE_USERNAME # USE_DN|USE_USERNAME
+    initialAdminIdentity: "" # CN=Administrator,DC=example,DC=com
+    manager:
+      distinguishedName: "" # CN=Administrator,DC=example,DC=com
+      passwordSecretRef:
+        name: ""
+        key: ""
+    userSearchBase: "" # DC=example,DC=com
+    userSearchFilter: sAMAccountName={0}
+
+image:
+  repository: apache/nifi
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Mandatory, sets the value of `nifi.sensitive.props.key`
+sensitivePropsKey:
+  secretRef:
+    name: ""
+    key: ""
+
+ports:
+  https: 8443
+  cluster: 11443
+  remoteinput: 10000
+  loadbalance: 6342
+
+# TODO: Enable site-to-site communications via NodePort?
+# See: https://nifi.apache.org/docs/nifi-docs/html/administration-guide.html#site_to_site_properties
+
+nodeCount: 1
+
+cluster:
+  enabled: true
+  traffic:
+    maxThreads: 50 # Max number of threads used for inter-node communication
+  zookeeper:
+    connectionString: "" # zk01:2181,zk02:2181,zk03:2181
+    rootNode: /nifi
+
+# Extra config properties to set at runtime
+extraConfig:
+  nifiProperties: {}
+    # nifi.cluster.node.connection.timeout: 5 secs
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hostName: "" # nifi.example.com
+  nodeBaseHostName: "node-" # Subdomain prefix for external traffic
+  annotations: {}
+
+jvmHeap:
+  min: 512m
+  max: 1g
+
+resources:
+   requests:
+     cpu: 100m
+     memory: 1Gi
+   limits:
+     cpu: 1000m
+     memory: 2Gi
+
+volumeClaim:
+  volumeName: ""
+  storageClassName: ""
+  selector:
+    matchLabels: { }
+    matchExpressions: { }
+  dataSource: { }
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: { }
+  resources:
+    requests:
+      storage: ""
+    limits:
+      storage: ""
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
