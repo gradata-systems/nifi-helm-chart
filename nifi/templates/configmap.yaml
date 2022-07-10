@@ -13,13 +13,20 @@ data:
     scripts_dir='/opt/nifi/scripts'
     [ -f "${scripts_dir}/common.sh" ] && . "${scripts_dir}/common.sh"
 
+    {{- /* Set host connection properties so the node is reachable, with TLS hostname verification */}}
     host_name="${HOSTNAME}.{{ include "nifi.fullname" . }}"
     pod_index=$(echo ${HOSTNAME} | sed -E 's/^.*([0-9]+)$/\1/g')
 
     prop_replace 'nifi.web.https.host' "${host_name}"
-
     export NIFI_WEB_HTTPS_HOST="${host_name}"
     export NIFI_WEB_PROXY_HOST="{{ .Values.ingress.hostName }},{{ .Values.ingress.nodeBaseHostName }}${pod_index}.{{ .Values.ingress.hostName }},${host_name}.{{ .Release.Namespace }}"
+
+    {{- /* Provenance repository encryption key */}}
+    prop_replace 'nifi.repository.encryption.protocol.version' '1'
+    prop_replace 'nifi.repository.encryption.key.id' '{{ .Values.encryption.repository.keyId }}'
+    prop_replace 'nifi.repository.encryption.key.provider' 'KEYSTORE'
+    prop_replace 'nifi.repository.encryption.key.provider.keystore.location' 'conf/repository.p12'
+    prop_replace 'nifi.repository.encryption.key.provider.keystore.password' "${KEYSTORE_PASSWORD}"
 
     {{- /* Replace properties not exposed by environment variables */}}
     {{- if .Values.cluster.enabled }}
@@ -32,21 +39,38 @@ data:
     prop_replace 'nifi.zookeeper.security.truststoreType' "${TRUSTSTORE_TYPE}"
     prop_replace 'nifi.zookeeper.security.truststorePasswd' "${TRUSTSTORE_PASSWORD}"
 
+    {{- /* Connect to NiFi Registry */}}
+    prop_replace 'nifi.nar.library.provider.nifi-registry.implementation' \
+      'org.apache.nifi.registry.extension.NiFiRegistryNarProvider'
+    prop_replace 'nifi.nar.library.provider.nifi-registry.url' \
+      "https://{{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}:{{ .Values.nifi_registry.ports.https }}"
+
+    authorizers_file='conf/authorizers.xml'
+
     {{- /* Grant nodes cluster permissions */}}
     list_identities () {
       node_identities=""
-      for (( i = 0; i < {{ .Values.nodeCount }}; i++ )); do
+      for (( i = 0; i < {{ .Values.global.nifi.nodeCount }}; i++ )); do
         node_dn="CN={{ include "nifi.fullname" . }}-${i}.{{ include "nifi.fullname" . }}"
         node_identities="${node_identities}<property name=\"$1 Node-${i}\">${node_dn}</property>\n"
       done
-      sed -i -E "s|(<property name=\"$1 1\">.*</property>)|\1\n${node_identities}|g" ${NIFI_HOME}/conf/authorizers.xml
+      sed -i -E "s|(<property name=\"$1 1\">.*</property>)|\1\n${node_identities}|g" "${authorizers_file}"
     }
+    list_identities 'Node Identity'
+    list_identities 'Initial User Identity'
 
-    list_identities "Node Identity"
-    list_identities "Initial User Identity"
+    {{- /* Set file and directory paths to persistent locations */}}
+    {{- with .Values.persistence }}
+    conf_dir='./data/conf'
+    prop_replace 'nifi.flow.configuration.json.file' "${conf_dir}/{{ .config.files.flowJson }}"
+    prop_replace 'nifi.flow.configuration.archive.dir' "${conf_dir}/{{ .config.dirs.archive }}"
+
+    sed -i -E "s|(<property name=\"Authorizations File\">).*(</property>)|\1${conf_dir}/{{ .config.files.authorizations }}\2|g" "${authorizers_file}"
+    sed -i -E "s|(<property name=\"Users File\">).*(</property>)|\1${conf_dir}/{{ .config.files.users }}\2|g" "${authorizers_file}"
+    {{- end }}
 
     {{- /* Generate a TLS cert for this node from the CSI-provided certificates and private key */}}
-    cert_dir='/opt/certs'
+    cert_dir='/opt/certmanager'
     tls_dir='/opt/tls'
     rm -f $tls_dir/*
     openssl pkcs12 -export \
@@ -66,6 +90,8 @@ data:
     prop_replace {{ $key | squote }} {{ $value | quote }}
     {{- end }}
 
-    #sleep 1000000
+    {{- if .Values.debugStartup }}
+    sleep 1000000
+    {{- end }}
 
     exec $scripts_dir/start.sh

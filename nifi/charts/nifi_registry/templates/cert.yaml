@@ -6,9 +6,10 @@ metadata:
     {{- include "nifi-registry.labels" . | nindent 4 }}
 spec:
   secretName: {{ include "nifi-registry.fullname" . }}-tls
-  commonName: {{ include "nifi-registry.fullname" . }}
+  commonName: {{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}
   dnsNames:
-    - {{ include "nifi-registry.fullname" . }}
+    - {{ .Values.ingress.hostName }}
+    - {{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}
   usages:
     - server auth
     - client auth

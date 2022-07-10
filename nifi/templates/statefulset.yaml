@@ -1,7 +1,4 @@
-{{- $certPath := "/opt/certs" }}
-{{- $tlsPath := "/opt/tls" }}
-{{- $keystoreFile := "keystore.p12" }}
-{{- $truststoreFile := "truststore.p12" }}
+{{- $nifiHome := "/opt/nifi/nifi-current" }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -10,7 +7,7 @@ metadata:
     {{- include "nifi.labels" . | nindent 4 }}
 spec:
   podManagementPolicy: Parallel
-  replicas: {{ .Values.nodeCount }}
+  replicas: {{ .Values.global.nifi.nodeCount }}
   selector:
     matchLabels:
       {{- include "nifi.selectorLabels" . | nindent 6 }}
@@ -29,7 +26,7 @@ spec:
             - name: NIFI_SENSITIVE_PROPS_KEY
               valueFrom:
                 secretKeyRef:
-                  {{ toYaml .Values.sensitivePropsKey.secretRef | nindent 18 }}
+                  {{- toYaml .Values.encryption.sensitiveProperties.secretRef | nindent 18 }}
             - name: NIFI_JVM_HEAP_INIT
               value: {{ .Values.jvmHeap.min | quote }}
             - name: NIFI_JVM_HEAP_MAX
@@ -40,7 +37,7 @@ spec:
             - name: NIFI_CLUSTER_IS_NODE
               value: "true"
             - name: NIFI_ELECTION_MAX_CANDIDATES
-              value: {{ .Values.nodeCount | quote }}
+              value: {{ .Values.global.nifi.nodeCount | quote }}
             - name: NIFI_CLUSTER_NODE_PROTOCOL_MAX_THREADS
               value: {{ .Values.cluster.traffic.maxThreads | quote }}
             - name: NIFI_ZK_CONNECT_STRING
@@ -50,63 +47,10 @@ spec:
             - name: NIFI_CLUSTER_NODE_PROTOCOL_PORT
               value: {{ .Values.ports.cluster | quote }}
             {{- end }}
-            - name: KEYSTORE_PATH
-              value: {{ $tlsPath }}/{{ $keystoreFile }}
-            - name: KEYSTORE_TYPE
-              value: PKCS12
-            - name: KEYSTORE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- toYaml .Values.global.tls.certificate.keystorePasswordSecretRef | nindent 18 }}
-            - name: TRUSTSTORE_PATH
-              value: {{ $tlsPath }}/{{ $truststoreFile }}
-            - name: TRUSTSTORE_TYPE
-              value: PKCS12
-            - name: TRUSTSTORE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- toYaml .Values.global.tls.certificate.keystorePasswordSecretRef | nindent 18 }}
-            - name: AUTH
-              value: ldap
-            {{- with .Values.global.ldap }}
-            - name: LDAP_URL
-              value: {{ .url | quote }}
-            - name: LDAP_TLS_PROTOCOL
-              value: {{ .tlsProtocol | quote }}
-            - name: LDAP_AUTHENTICATION_STRATEGY
-              value: {{ .authenticationStrategy | quote }}
-            - name: LDAP_IDENTITY_STRATEGY
-              value: {{ .identityStrategy | quote }}
-            - name: INITIAL_ADMIN_IDENTITY
-              value: {{ .initialAdminIdentity | quote }}
-            - name: LDAP_MANAGER_DN
-              value: {{ .manager.distinguishedName | quote }}
-            - name: LDAP_MANAGER_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- toYaml .manager.passwordSecretRef | nindent 18 }}
-            - name: LDAP_USER_SEARCH_BASE
-              value: {{ .userSearchBase | quote }}
-            - name: LDAP_USER_SEARCH_FILTER
-              value: {{ .userSearchFilter | quote }}
-            {{- if or (eq .authenticationStrategy "LDAPS") (eq .authenticationStrategy "START_TLS") }}
-            - name: LDAP_TLS_KEYSTORE
-              value: {{ $tlsPath }}/{{ $keystoreFile }}
-            - name: LDAP_TLS_KEYSTORE_TYPE
-              value: PKCS12
-            - name: LDAP_TLS_KEYSTORE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- toYaml $.Values.global.tls.certificate.keystorePasswordSecretRef | nindent 18 }}
-            - name: LDAP_TLS_TRUSTSTORE
-              value: {{ $tlsPath }}/{{ $truststoreFile }}
-            - name: LDAP_TLS_TRUSTSTORE_TYPE
-              value: PKCS12
-            - name: LDAP_TLS_TRUSTSTORE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  {{- toYaml $.Values.global.tls.certificate.keystorePasswordSecretRef | nindent 18 }}
-            {{- end }}
+            {{- include "nifi.keystoreEnvironment" . | nindent 12 }}
+            {{- include "nifi.ldapEnvironment" . | nindent 12 }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . }}
             {{- end }}
           ports:
             {{- range $name, $number := .Values.ports }}
@@ -114,45 +58,70 @@ spec:
               containerPort: {{ $number }}
               protocol: TCP
             {{- end }}
-{{/*          startupProbe:*/}}
-{{/*            httpGet:*/}}
-{{/*              path: /*/}}
-{{/*              port: https*/}}
-{{/*              scheme: HTTPS*/}}
-{{/*            initialDelaySeconds: 10*/}}
-{{/*            timeoutSeconds: 3*/}}
-{{/*            periodSeconds: 3*/}}
-{{/*            failureThreshold: 10*/}}
-{{/*          livenessProbe:*/}}
-{{/*            httpGet:*/}}
-{{/*              path: /*/}}
-{{/*              port: https*/}}
-{{/*              scheme: HTTPS*/}}
-{{/*            initialDelaySeconds: 30*/}}
-{{/*            timeoutSeconds: 3*/}}
-{{/*            periodSeconds: 10*/}}
-{{/*            failureThreshold: 3*/}}
           volumeMounts:
-            - mountPath: {{ $certPath }}/tls.crt
+            - mountPath: {{ include "nifi.certPath" . }}/tls.crt
               name: certs
               subPath: tls.crt
               readOnly: true
-            - mountPath: {{ $certPath }}/tls.key
+            - mountPath: {{ include "nifi.certPath" . }}/tls.key
               name: certs
               subPath: tls.key
               readOnly: true
-            - mountPath: {{ $certPath }}/ca.crt
+            - mountPath: {{ include "nifi.certPath" . }}/ca.crt
               name: certs
               subPath: ca.crt
               readOnly: true
-            - mountPath: {{ $tlsPath }}
+            - mountPath: {{ include "nifi.tlsPath" . }}
               name: tls
+            - mountPath: {{ $nifiHome }}/conf/repository.p12
+              name: secrets
+              subPath: {{ .Values.encryption.repository.secretRef.key }}
+              readOnly: true
             - mountPath: /opt/nifi/scripts/custom-startup.sh
               name: config
               subPath: custom-startup.sh
               readOnly: true
+            {{- with .Values.persistence.config }}
+            - mountPath: {{ $nifiHome}}/data/conf
+              name: data
+              subPath: conf
+            {{- end }}
+            - mountPath: {{ $nifiHome }}/data/store
+              name: data
+              subPath: store
+            {{- with .Values.persistence.repo }}
+            - mountPath: {{ $nifiHome }}/flowfile_repository
+              name: data
+              subPath: {{ printf "%s/%s" .path .dirs.flowfile }}
+            - mountPath: {{ $nifiHome }}/content_repository
+              name: data
+              subPath: {{ printf "%s/%s" .path .dirs.content }}
+            - mountPath: {{ $nifiHome }}/provenance_repository
+              name: data
+              subPath: {{ printf "%s/%s" .path .dirs.provenance }}
+            {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if not .Values.debugStartup }}
+          startupProbe:
+            httpGet:
+              path: /nifi
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /nifi
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 30
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 3
+          {{- end }}
       volumes:
         - name: certs
           csi:
@@ -170,7 +139,7 @@ spec:
               {{- end }}
             readOnly: true
         - name: tls
-          emptyDir: {}
+          emptyDir: { }
         - name: config
           configMap:
             name: {{ include "nifi.fullname" . }}
@@ -178,6 +147,12 @@ spec:
               - key: custom-startup.sh
                 path: custom-startup.sh
                 mode: 0744
+        {{- with .Values.encryption.repository.secretRef }}
+        - name: secrets
+          secret:
+            secretName: {{ .name }}
+            defaultMode: 0400
+        {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -195,40 +170,17 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-{{/*  volumeClaimTemplates:*/}}
-{{/*    - metadata:*/}}
-{{/*        name: data*/}}
-{{/*        labels:*/}}
-{{/*          {{- include "nifi.labels" . | nindent 10 }}*/}}
-{{/*      spec:*/}}
-{{/*        volumeName: {{ .Values.volumeClaim.volumeName | quote }}*/}}
-{{/*        storageClassName: {{ .Values.volumeClaim.storageClassName | quote }}*/}}
-{{/*        selector:*/}}
-{{/*                {{- with .Values.volumeClaim.selector.matchLabels }}*/}}
-{{/*          matchLabels:*/}}
-{{/*                  {{- toYaml . | nindent 12 }}*/}}
-{{/*                {{- end }}*/}}
-{{/*                {{- with .Values.volumeClaim.selector.matchExpressions }}*/}}
-{{/*          matchExpressions:*/}}
-{{/*                  {{- toYaml . | nindent 12 }}*/}}
-{{/*                {{- end }}*/}}
-{{/*              {{- with .Values.volumeClaim.dataSource }}*/}}
-{{/*        dataSource:*/}}
-{{/*                {{- toYaml . | nindent 10 }}*/}}
-{{/*              {{- end }}*/}}
-{{/*              {{- with .Values.volumeClaim.accessModes }}*/}}
-{{/*        accessModes:*/}}
-{{/*                {{- toYaml . | nindent 10 }}*/}}
-{{/*              {{- end }}*/}}
-{{/*              {{- with .Values.volumeClaim.volumeMode }}*/}}
-{{/*        volumeMode:*/}}
-{{/*                {{- toYaml . | nindent 10 }}*/}}
-{{/*              {{- end }}*/}}
-{{/*        resources:*/}}
-{{/*          requests:*/}}
-{{/*            storage: {{ .Values.volumeClaim.resources.requests.storage }}*/}}
-{{/*          limits:*/}}
-{{/*            storage: {{ .Values.volumeClaim.resources.limits.storage }}*/}}
+  {{- with .Values.volumeClaims }}
+  volumeClaimTemplates:
+    {{- range $name, $volumeClaim := . }}
+    - metadata:
+        name: {{ $name }}
+        labels:
+          {{- include "nifi.labels" $ | nindent 10 }}
+      spec:
+        {{- toYaml $volumeClaim | nindent 8 }}
+    {{- end }}
+  {{- end }}
 ---
 apiVersion: v1
 kind: Service

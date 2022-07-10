@@ -15,7 +15,7 @@ spec:
   tls:
     - hosts:
         - {{ .Values.ingress.hostName }}
-        {{- range $i, $e := until (int .Values.nodeCount) }}
+        {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
         - {{ printf "%s%d.%s" $.Values.ingress.nodeBaseHostName $i $.Values.ingress.hostName }}
         {{- end }}
       secretName: {{ include "nifi.fullname" . }}-tls
@@ -30,7 +30,14 @@ spec:
                 name: {{ include "nifi.fullname" . }}-http
                 port:
                   name: https
-    {{- range $i, $e := until (int .Values.nodeCount) }}
+          - path: /datafeed
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "nifi.fullname" . }}-http
+                port:
+                  name: datafeed
+    {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
     - host: {{ printf "%s%d.%s" $.Values.ingress.nodeBaseHostName $i $.Values.ingress.hostName }}
       http:
         paths:

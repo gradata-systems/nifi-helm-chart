@@ -1,0 +1,227 @@
+{{- $nifiRegistryHome := "/opt/nifi-registry/nifi-registry-current" }}
+{{- $flowStorageDir := printf "%s/data/flow_storage" $nifiRegistryHome }}
+{{- $bundleStorageDir := printf "%s/data/extension_bundles" $nifiRegistryHome }}
+{{- $databaseDriverPath := "/opt/nifi-registry/libs/db-driver.jar" }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "nifi-registry.fullname" . }}
+  labels:
+    {{- include "nifi-registry.labels" . | nindent 4 }}
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "nifi-registry.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "nifi-registry.fullname" . }}
+  template:
+    metadata:
+      labels:
+        {{- include "nifi-registry.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "nifi-registry.name" . }}
+          image: {{ if .Values.global.containerRegistry }}{{ (printf "%s/" .Values.global.containerRegistry) }}{{ end }}{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [ "../scripts/custom-startup.sh" ]
+          env:
+            - name: NIFI_REGISTRY_WEB_HTTPS_HOST
+              value: 0.0.0.0
+            - name: NIFI_REGISTRY_WEB_HTTPS_PORT
+              value: {{ .Values.ports.https | quote }}
+            {{- if .Values.database.external }}
+            {{- with .Values.database.url }}
+            - name: NIFI_REGISTRY_DB_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.database.driver.class }}
+            - name: NIFI_REGISTRY_DB_CLASS
+              value: {{ . | quote}}
+            {{- end }}
+            - name: NIFI_REGISTRY_DB_DIR
+              value: {{ $databaseDriverPath }}
+            - name: NIFI_REGISTRY_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  {{- with .Values.database.login.secretRef }}
+                  name: {{ .name }}
+                  key: {{ .userKey }}
+                  {{- end }}
+            - name: NIFI_REGISTRY_DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  {{- with .Values.database.login.secretRef }}
+                  name: {{ .name }}
+                  key: {{ .passwordKey }}
+                  {{- end }}
+            - name: NIFI_REGISTRY_DB_MAX_CONNS
+              value: {{ .Values.database.maxConnections | quote }}
+            - name: NIFI_REGISTRY_DB_DEBUG_SQL
+              value: {{ .Values.database.debug | quote }}
+            {{- end }}
+            {{- if eq .Values.persistence.flow.provider "file" }}
+            - name: NIFI_REGISTRY_FLOW_PROVIDER
+              value: {{ .Values.persistence.flow.provider | quote }}
+            {{- if eq .Values.persistence.flow.provider "file" }}
+            - name: NIFI_REGISTRY_FLOW_STORAGE_DIR
+              value: {{ $flowStorageDir | quote }}
+            {{- end }}
+            {{- end }}
+            - name: NIFI_REGISTRY_BUNDLE_PROVIDER
+              value: {{ .Values.persistence.bundle.provider | quote }}
+            - name: NIFI_REGISTRY_BUNDLE_STORAGE_DIR
+              value: {{ $bundleStorageDir | quote }}
+            {{- include "nifi.keystoreEnvironment" . | nindent 12 }}
+            {{- include "nifi.ldapEnvironment" . | nindent 12 }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            {{- range $name, $number := .Values.ports }}
+            - name: {{ $name }}
+              containerPort: {{ $number }}
+              protocol: TCP
+            {{- end }}
+          volumeMounts:
+            - mountPath: {{ include "nifi.certPath" . }}/tls.crt
+              name: certs
+              subPath: tls.crt
+              readOnly: true
+            - mountPath: {{ include "nifi.certPath" . }}/tls.key
+              name: certs
+              subPath: tls.key
+              readOnly: true
+            - mountPath: {{ include "nifi.certPath" . }}/ca.crt
+              name: certs
+              subPath: ca.crt
+              readOnly: true
+            - mountPath: {{ include "nifi.tlsPath" . }}
+              name: tls
+            - mountPath: /opt/nifi-registry/scripts/custom-startup.sh
+              name: config
+              subPath: custom-startup.sh
+              readOnly: true
+            {{- if .Values.database.external }}
+              {{- /* MySQL or Postgres database driver */}}
+            - mountPath: {{ $databaseDriverPath }}
+              name: database-driver
+              readOnly: true
+              {{- /* Use the DatabaseFlowPersistenceProvider */}}
+            - mountPath: /opt/nifi-registry/conf/providers.xml
+              name: conf
+              readOnly: true
+            {{- else }}
+              {{- /* If using an internal database, mount a volume if one was specified */}}
+            - mountPath: {{ $nifiRegistryHome }}/database
+              name: data
+              subPath: {{ .Values.persistence.database.path }}
+            {{- end }}
+            - mountPath: {{ $nifiRegistryHome }}/data/conf
+              name: data
+              subPath: {{ .Values.persistence.config.path }}
+            {{- if eq .Values.persistence.flow.provider "file" }}
+            - mountPath: {{ $flowStorageDir }}
+              name: data
+              subPath: {{ .Values.persistence.flow.fileProvider.path }}
+            {{- end }}
+            {{- if eq .Values.persistence.bundle.provider "file" }}
+            - mountPath: {{ $bundleStorageDir }}
+              name: data
+              subPath: {{ .Values.persistence.bundle.fileProvider.path }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 14 }}
+          startupProbe:
+            httpGet:
+              path: /nifi-registry
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /nifi-registry
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 30
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: certs
+          csi:
+            driver: csi.cert-manager.io
+            volumeAttributes:
+              {{- with .Values.global.tls.certificate }}
+              csi.cert-manager.io/issuer-name: {{ .issuerRef.name | quote }}
+              csi.cert-manager.io/issuer-kind: ClusterIssuer
+              csi.cert-manager.io/common-name: ${POD_NAME}.{{ include "nifi-registry.fullname" $ }}
+              csi.cert-manager.io/dns-names: ${POD_NAME}.{{ include "nifi-registry.fullname" $ }}
+              csi.cert-manager.io/duration: {{ .duration }}
+              csi.cert-manager.io/key-usages: server auth,client auth
+              csi.cert-manager.io/renew-before: {{ .renewBefore | quote }}
+              csi.cert-manager.io/fs-group: "1000"
+              {{- end }}
+            readOnly: true
+        - name: tls
+          emptyDir: { }
+        - name: config
+          configMap:
+            name: {{ include "nifi-registry.fullname" . }}
+            items:
+              - key: custom-startup.sh
+                path: custom-startup.sh
+                mode: 0744
+              - key: providers.xml
+                path: providers.xml
+        {{- with .Values.database.driver.volumeSpec }}
+        - name: database-driver
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    {{- range $name, $volumeClaim := .Values.volumeClaims }}
+    - metadata:
+        name: {{ $name }}
+        labels:
+          {{- include "nifi-registry.labels" $ | nindent 10 }}
+      spec:
+        {{- toYaml $volumeClaim | nindent 8 }}
+    {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nifi-registry.fullname" . }}
+  labels:
+    {{- include "nifi-registry.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    {{- range $name, $number := .Values.ports }}
+    - name: {{ $name }}
+      port: {{ $number }}
+      protocol: TCP
+    {{- end }}
+  selector:
+    {{- include "nifi-registry.selectorLabels" . | nindent 4 }}

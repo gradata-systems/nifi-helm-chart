@@ -1,0 +1,87 @@
+# Default values for nifi-registry.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: apache/nifi-registry
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+ports:
+  https: 18443
+
+database:
+  external: false
+  url: "" # If not provided, built-in H2 database is used
+  driver:
+    class: org.h2.Driver # com.mysql.cj.jdbc.Driver
+    volumeSpec: { } # Required if using an external DB
+  #      nfs:
+  #        server: fs.example.com
+  #        path: /mysql/driver/mysql-connector-java-8.0.29-1.jar
+  maxConnections: 5
+  debug: false
+  login:
+    secretRef:
+      name: ""
+      userKey: username
+      passwordKey: password
+
+persistence:
+  config:
+    path: conf
+    files:
+      users: users.xml
+  database:
+    path: db
+  flow:
+    provider: "" # Optional. Defaults to `file` if using internal database. Unset if using external database flow persistence.
+    fileProvider:
+      path: flow
+  bundle:
+    provider: file
+    fileProvider:
+      path: bundle
+
+extraEnv: [ ]
+#  - name: MY_VAR
+#    value: "some value"
+
+extraConfig:
+  nifiRegistryProperties: { }
+#    nifi.registry.web.jetty.threads: 200
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hostName: "" # registry.nifi.example.com
+  annotations: { }
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+volumeClaims:
+  data: { }
+#    storageClassName: ""
+#    selector:
+#      matchLabels: { }
+#      matchExpressions: { }
+#    accessModes:
+#      - ReadWriteOnce
+#    resources:
+#      requests:
+#        storage: ""
+#      limits:
+#        storage: ""
+
+nodeSelector: { }
+tolerations: [ ]
+affinity: { }

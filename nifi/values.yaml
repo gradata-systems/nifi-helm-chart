@@ -5,6 +5,9 @@
 global:
   containerRegistry: ""
 
+  nifi:
+    nodeCount: 1
+
   tls:
     certificate:
       duration: 8760h # 365 days
@@ -17,7 +20,7 @@ global:
         kind: ClusterIssuer
 
   ldap:
-    url: "" # ldaps://dc.example.com:636
+    url: "" # ldaps://dc-1.example.com:636,ldaps://dc-2.example.com:636
     tlsProtocol: TLSv1.2
     authenticationStrategy: LDAPS # ANONYMOUS|SIMPLE|LDAPS|START_TLS
     identityStrategy: USE_USERNAME # USE_DN|USE_USERNAME
@@ -36,25 +39,44 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
-nameOverride: ""
-fullnameOverride: ""
+# Set to `true` to pause at startup before loading the application
+debugStartup: false
 
-# Mandatory, sets the value of `nifi.sensitive.props.key`
-sensitivePropsKey:
-  secretRef:
-    name: ""
-    key: ""
+encryption:
+  # Mandatory. Sets the password in `nifi.sensitive.props.key`
+  sensitiveProperties:
+    secretRef:
+      name: ""
+      key: ""
+  # Used to encrypt all repositories
+  repository:
+    keyId: 1
+    secretRef:
+      name: ""
+      key: "" # 64-character hex-encoded key
+
+persistence:
+  config:
+    path: conf
+    files:
+      authorizations: authorizations.xml
+      users: users.xml
+      flowJson: flow.json.gz
+    dirs:
+      archive: archive
+  repo:
+    path: repo
+    dirs:
+      flowfile: flowfile
+      content: content
+      provenance: provenance
 
 ports:
   https: 8443
   cluster: 11443
   remoteinput: 10000
   loadbalance: 6342
-
-# TODO: Enable site-to-site communications via NodePort?
-# See: https://nifi.apache.org/docs/nifi-docs/html/administration-guide.html#site_to_site_properties
-
-nodeCount: 1
+  datafeed: 9443
 
 cluster:
   enabled: true
@@ -66,46 +88,46 @@ cluster:
 
 # Extra config properties to set at runtime
 extraConfig:
-  nifiProperties: {}
-    # nifi.cluster.node.connection.timeout: 5 secs
+  nifiProperties: { }
+  # nifi.cluster.node.connection.timeout: 5 secs
+
+extraEnv: [ ]
+#  - name: MY_VAR
+#    value: "some value"
 
 ingress:
   enabled: true
   ingressClassName: nginx
   hostName: "" # nifi.example.com
   nodeBaseHostName: "node-" # Subdomain prefix for external traffic
-  annotations: {}
+  annotations: { }
 
 jvmHeap:
   min: 512m
   max: 1g
 
 resources:
-   requests:
-     cpu: 100m
-     memory: 1Gi
-   limits:
-     cpu: 1000m
-     memory: 2Gi
+  requests:
+    cpu: 100m
+    memory: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
 
-volumeClaim:
-  volumeName: ""
-  storageClassName: ""
-  selector:
-    matchLabels: { }
-    matchExpressions: { }
-  dataSource: { }
-  accessModes:
-    - ReadWriteOnce
-  volumeMode: { }
-  resources:
-    requests:
-      storage: ""
-    limits:
-      storage: ""
+volumeClaims:
+  data: { }
+#    storageClassName: ""
+#    selector:
+#      matchLabels: { }
+#      matchExpressions: { }
+#    accessModes:
+#      - ReadWriteOnce
+#    resources:
+#      requests:
+#        storage: ""
+#      limits:
+#        storage: ""
 
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
+nodeSelector: { }
+tolerations: [ ]
+affinity: { }
