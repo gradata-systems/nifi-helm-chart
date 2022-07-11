@@ -17,7 +17,8 @@ data:
     scripts_dir='/opt/nifi-registry/scripts'
     [ -f "${scripts_dir}/common.sh" ] && . "${scripts_dir}/common.sh"
 
-    authorizers_file='./conf/authorizers.xml'
+    authorizers_file='conf/authorizers.xml'
+    login_providers_file='conf/identity-providers.xml'
 
     {{- /* Grant nodes cluster permissions */}}
     list_identities () {
@@ -26,10 +27,31 @@ data:
         node_dn="CN={{ include "nifi.fullname" . }}-${i}.{{ include "nifi.fullname" . }}"
         node_identities="${node_identities}<property name=\"$1 Node-${i}\">${node_dn}</property>\n"
       done
-      sed -i -E "s|(<property name=\"$1 1\">.*</property>)|\1\n${node_identities}|g" "${authorizers_file}"
+      sed -i -E "s|(<\!--)?(<property name=\"$1 1\">.*</property>)(-->)?|\2\n${node_identities}|g" "${authorizers_file}"
     }
     list_identities 'NiFi Identity'
     list_identities 'Initial User Identity'
+
+    {{- /* Set LDAP TLS properties (as Docker image `update_login_providers.sh` mistakenly updates, instead of inserts elements */}}
+    insert_property () {
+      property_name=$1
+      property_value=$2
+      if [ -n "${property_value}" ]; then
+        xmlstarlet ed --inplace --subnode '//identityProviders/provider[1]' --type elem --name 'property' --value "${property_value}" \
+          --var node '$prev' \
+          --insert '$node' --type attr --name 'name' --value "${property_name}" \
+          "${login_providers_file}"
+      fi
+    }
+    # Remove comments to enable the ldap-provider
+    sed -i '/To enable the ldap-identity-provider remove/d' "${login_providers_file}"
+    insert_property 'TLS - Keystore'              "${LDAP_TLS_KEYSTORE}"
+    insert_property 'TLS - Keystore Password'     "${LDAP_TLS_KEYSTORE_PASSWORD}"
+    insert_property 'TLS - Keystore Type'         "${LDAP_TLS_KEYSTORE_TYPE}"
+    insert_property 'TLS - Truststore'            "${LDAP_TLS_TRUSTSTORE}"
+    insert_property 'TLS - Truststore Password'   "${LDAP_TLS_TRUSTSTORE_PASSWORD}"
+    insert_property 'TLS - Truststore Type'       "${LDAP_TLS_TRUSTSTORE_TYPE}"
+    insert_property 'TLS - Protocol'              "${LDAP_TLS_PROTOCOL}"
 
     {{- /* Set config file paths to persistent locations */}}
     conf_dir='./data/conf'
