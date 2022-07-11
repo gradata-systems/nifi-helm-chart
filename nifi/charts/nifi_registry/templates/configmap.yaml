@@ -59,22 +59,6 @@ data:
     sed -i -E "s|(<property name=\"Users File\">).*(</property>)|\1${conf_dir}/{{ .config.files.users }}\2|g" "${authorizers_file}"
     {{- end }}
 
-    {{- /* Generate a TLS cert for this node from the CSI-provided certificates and private key */}}
-    cert_dir='/opt/certmanager'
-    tls_dir='/opt/tls'
-    rm -f $tls_dir/*
-    openssl pkcs12 -export \
-      -in $cert_dir/tls.crt \
-      -inkey $cert_dir/tls.key \
-      -CAfile $cert_dir/ca.crt \
-      -passout "pass:${KEYSTORE_PASSWORD}" \
-      -out $tls_dir/keystore.p12
-    keytool -import -noprompt -trustcacerts \
-      -file $cert_dir/ca.crt \
-      -storepass "${TRUSTSTORE_PASSWORD}" \
-      -destkeystore $tls_dir/truststore.p12 \
-      -deststoretype pkcs12
-
     {{- range $key, $value := .Values.extraConfig.nifiRegistryProperties }}
     prop_replace {{ $key | squote }} {{ $value | quote }}
     {{- end }}

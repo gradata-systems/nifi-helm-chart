@@ -9,7 +9,7 @@ spec:
   commonName: {{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}
   dnsNames:
     - {{ .Values.ingress.hostName }}
-    - {{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}
+    - {{ include "nifi-registry.fullname" . }}-http.{{ .Release.Namespace }}
   usages:
     - server auth
     - client auth

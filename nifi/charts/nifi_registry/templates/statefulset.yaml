@@ -96,8 +96,14 @@ spec:
               name: certs
               subPath: ca.crt
               readOnly: true
-            - mountPath: {{ include "nifi.tlsPath" . }}
-              name: tls
+            - mountPath: {{ include "nifi.tlsPath" . }}/keystore.p12
+              name: certs
+              subPath: keystore.p12
+              readOnly: true
+            - mountPath: {{ include "nifi.tlsPath" . }}/truststore.p12
+              name: certs
+              subPath: truststore.p12
+              readOnly: true
             - mountPath: /opt/nifi-registry/scripts/custom-startup.sh
               name: config
               subPath: custom-startup.sh
@@ -152,22 +158,9 @@ spec:
             failureThreshold: 3
       volumes:
         - name: certs
-          csi:
-            driver: csi.cert-manager.io
-            volumeAttributes:
-              {{- with .Values.global.tls.certificate }}
-              csi.cert-manager.io/issuer-name: {{ .issuerRef.name | quote }}
-              csi.cert-manager.io/issuer-kind: ClusterIssuer
-              csi.cert-manager.io/common-name: ${POD_NAME}.{{ include "nifi-registry.fullname" $ }}
-              csi.cert-manager.io/dns-names: ${POD_NAME}.{{ include "nifi-registry.fullname" $ }}
-              csi.cert-manager.io/duration: {{ .duration }}
-              csi.cert-manager.io/key-usages: server auth,client auth
-              csi.cert-manager.io/renew-before: {{ .renewBefore | quote }}
-              csi.cert-manager.io/fs-group: "1000"
-              {{- end }}
-            readOnly: true
-        - name: tls
-          emptyDir: { }
+          secret:
+            secretName: {{ include "nifi-registry.fullname" . }}-tls
+            defaultMode: 0400
         - name: config
           configMap:
             name: {{ include "nifi-registry.fullname" . }}
