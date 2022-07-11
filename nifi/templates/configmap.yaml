@@ -86,6 +86,9 @@ data:
       -deststoretype pkcs12
     {{- end }}
 
+    {{- /* Set UI autorefresh interval */}}
+    prop_replace 'nifi.ui.autorefresh.interval' {{ .Values.uiRefreshInterval | squote }}
+
     {{- range $key, $value := .Values.extraConfig.nifiProperties }}
     prop_replace {{ $key | squote }} {{ $value | quote }}
     {{- end }}

@@ -42,6 +42,8 @@ image:
 # Set to `true` to pause at startup before loading the application
 debugStartup: false
 
+uiRefreshInterval: 10 sec
+
 encryption:
   # Mandatory. Sets the password in `nifi.sensitive.props.key`
   sensitiveProperties:
