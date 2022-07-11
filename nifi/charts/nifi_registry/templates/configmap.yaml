@@ -24,7 +24,7 @@ data:
     list_identities () {
       node_identities=""
       for (( i = 0; i < {{ .Values.global.nifi.nodeCount }}; i++ )); do
-        node_dn="CN={{ include "nifi.fullname" . }}-${i}.{{ include "nifi.fullname" . }}"
+        node_dn="CN={{ include "nifi.fullname" . }}-${i}.{{ include "nifi.fullname" . }}.{{ .Release.Namespace }}"
         node_identities="${node_identities}<property name=\"$1 Node-${i}\">${node_dn}</property>\n"
       done
       sed -i -E "s|(<\!--)?(<property name=\"$1 1\">.*</property>)(-->)?|\2\n${node_identities}|g" "${authorizers_file}"

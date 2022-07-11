@@ -16,12 +16,12 @@ data:
     [ -f "${scripts_dir}/common.sh" ] && . "${scripts_dir}/common.sh"
 
     {{- /* Set host connection properties so the node is reachable, with TLS hostname verification */}}
-    host_name="${HOSTNAME}.{{ include "nifi.fullname" . }}"
+    host_name="${HOSTNAME}.{{ include "nifi.fullname" . }}.{{ .Release.Namespace }}"
     pod_index=$(echo ${HOSTNAME} | sed -E 's/^.*([0-9]+)$/\1/g')
 
     prop_replace 'nifi.web.https.host' "${host_name}"
     export NIFI_WEB_HTTPS_HOST="${host_name}"
-    export NIFI_WEB_PROXY_HOST="{{ .Values.ingress.hostName }},{{ .Values.ingress.nodeBaseHostName }}${pod_index}.{{ .Values.ingress.hostName }},${host_name}.{{ .Release.Namespace }}"
+    export NIFI_WEB_PROXY_HOST="${host_name},{{ .Values.ingress.hostName }},{{ .Values.ingress.nodeBaseHostName }}${pod_index}.{{ .Values.ingress.hostName }}"
 
     {{- /* Provenance repository encryption key */}}
     prop_replace 'nifi.repository.encryption.protocol.version' '1'
@@ -51,7 +51,7 @@ data:
     list_identities () {
       node_identities=""
       for (( i = 0; i < {{ .Values.global.nifi.nodeCount }}; i++ )); do
-        node_dn="CN={{ include "nifi.fullname" . }}-${i}.{{ include "nifi.fullname" . }}"
+        node_dn="CN={{ include "nifi.fullname" . }}-${i}.{{ include "nifi.fullname" . }}.{{ .Release.Namespace }}"
         node_identities="${node_identities}<property name=\"$1 Node-${i}\">${node_dn}</property>\n"
       done
       sed -i -E "s|(<property name=\"$1 1\">.*</property>)|\1\n${node_identities}|g" "${authorizers_file}"
