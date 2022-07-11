@@ -18,17 +18,18 @@ database:
   url: "" # If not provided, built-in H2 database is used
   driver:
     class: org.h2.Driver # com.mysql.cj.jdbc.Driver
+    fileName: mysql-connector-java-8.0.29-1.jar
     volumeSpec: { } # Required if using an external DB
   #      nfs:
   #        server: fs.example.com
-  #        path: /mysql/driver/mysql-connector-java-8.0.29-1.jar
+  #        path: /mysql/driver
   maxConnections: 5
   debug: false
-  login:
+  userName: nifi
+  password:
     secretRef:
       name: ""
-      userKey: username
-      passwordKey: password
+      key: password
 
 persistence:
   config:
