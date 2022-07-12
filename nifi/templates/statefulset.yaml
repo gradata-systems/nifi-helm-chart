@@ -17,6 +17,32 @@ spec:
       labels:
         {{- include "nifi.selectorLabels" . | nindent 8 }}
     spec:
+      initContainers:
+        - name: take-ownership
+          image: {{ if .Values.global.containerRegistry }}{{ (printf "%s/" .Values.global.containerRegistry) }}{{ end }}busybox
+          command:
+            - sh
+            - -c
+            - |
+              chown 1000:1000 data/*
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+          volumeMounts:
+            - mountPath: /data/conf
+              name: data
+              subPath: conf
+            {{- with .Values.persistence.repo }}
+            - mountPath: /data/flowfile_repository
+              name: data
+              subPath: {{ printf "%s/%s" .path .dirs.flowfile }}
+            - mountPath: /data/content_repository
+              name: data
+              subPath: {{ printf "%s/%s" .path .dirs.content }}
+            - mountPath: /data/provenance_repository
+              name: data
+              subPath: {{ printf "%s/%s" .path .dirs.provenance }}
+            {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{ include "nifi.image" . }}

@@ -7,6 +7,11 @@ metadata:
 data:
   flow.xml:
     {{- (tpl (.Files.Get "config/flow.xml") .) | nindent 4 }}
+  take-ownership.sh: |
+    #!/bin/bash -e
+
+
+      "${NIFI_HOME}/
   custom-startup.sh: |
     #!/bin/bash -e
 
