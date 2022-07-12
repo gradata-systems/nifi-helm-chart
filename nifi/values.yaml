@@ -79,7 +79,6 @@ ports:
   cluster: 11443
   remoteinput: 10000
   loadbalance: 6342
-  datafeed: 9443
 
 cluster:
   enabled: true
@@ -88,6 +87,17 @@ cluster:
   zookeeper:
     connectionString: "" # zk01:2181,zk02:2181,zk03:2181
     rootNode: /nifi
+
+# Additional ports and Ingress rules to configure for each node
+extraPorts:
+  datafeed:
+    containerPort: 9443
+    protocol: TCP
+    nodePort: "" # Set if NodePort is required
+    ingress:
+      path: /datafeed # Omit if ingress is not required
+      pathType: Exact
+
 
 # Extra config properties to set at runtime
 extraConfig:

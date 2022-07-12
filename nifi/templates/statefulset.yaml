@@ -58,6 +58,13 @@ spec:
               containerPort: {{ $number }}
               protocol: TCP
             {{- end }}
+            {{- if .Values.extraPorts }}
+            {{- range $name, $port := .Values.extraPorts }}
+            - name: {{ $name }}
+              containerPort: {{ $port.containerPort }}
+              protocol: {{ $port.protocol | default "TCP" }}
+            {{- end }}
+            {{- end }}
           volumeMounts:
             - mountPath: {{ include "nifi.certPath" . }}/tls.crt
               name: certs
@@ -174,7 +181,7 @@ spec:
             - podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    {{- include "nifi-registry.selectorLabels" . | nindent 20 }}
+                    {{- include "nifi.selectorLabels" . | nindent 20 }}
                 topologyKey: kubernetes.io/hostname
               weight: 100
         {{- end }}

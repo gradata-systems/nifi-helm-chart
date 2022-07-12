@@ -5,16 +5,23 @@ metadata:
   labels:
     {{- include "nifi.labels" . | nindent 4 }}
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: {{ .Values.ports.https }}
       targetPort: https
       protocol: TCP
       name: https
-    - port: {{ .Values.ports.datafeed }}
-      targetPort: datafeed
-      protocol: TCP
-      name: datafeed
+    {{- if .Values.extraPorts }}
+    {{- range $name, $port := .Values.extraPorts }}
+    - name: {{ $name }}
+      port: {{ $port.containerPort }}
+      targetPort: {{ $port.containerPort }}
+      protocol: {{ $port.protocol | default "TCP" }}
+      {{- if $port.nodePort }}
+      nodePort: {{ $port.nodePort }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
   selector:
     {{- include "nifi.selectorLabels" . | nindent 4 }}
 {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
@@ -29,10 +36,20 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    {{- range $name, $number := $.Values.ports }}
-    - name: {{ $name }}
-      port: {{ $number }}
+    - port: {{ $.Values.ports.https }}
+      targetPort: https
       protocol: TCP
+      name: https
+    {{- if $.Values.extraPorts }}
+    {{- range $name, $port := $.Values.extraPorts }}
+    - name: {{ $name }}
+      port: {{ $port.containerPort }}
+      targetPort: {{ $port.containerPort }}
+      protocol: {{ $port.protocol | default "TCP" }}
+      {{- if $port.nodePort }}
+      nodePort: {{ $port.nodePort }}
+      {{- end }}
+    {{- end }}
     {{- end }}
   selector:
     statefulset.kubernetes.io/pod-name: {{ include "nifi.fullname" $ }}-{{ $i }}

@@ -30,13 +30,17 @@ spec:
                 name: {{ include "nifi.fullname" . }}-http
                 port:
                   name: https
-          - path: /datafeed
-            pathType: Prefix
+          {{- range $name, $port := .Values.extraPorts }}
+          {{- if $port.ingress }}
+          - path: {{ $port.ingress.path | quote }}
+            pathType: {{ $port.ingress.pathType | default "Exact" }}
             backend:
               service:
-                name: {{ include "nifi.fullname" . }}-http
+                name: {{ include "nifi.fullname" $ }}-http
                 port:
-                  name: datafeed
+                  name: {{ $name }}
+          {{- end }}
+          {{- end }}
     {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
     - host: {{ printf "%s%d.%s" $.Values.ingress.nodeBaseHostName $i $.Values.ingress.hostName }}
       http:
