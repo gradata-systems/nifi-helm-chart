@@ -73,20 +73,6 @@ resources:
     cpu: 500m
     memory: 512Mi
 
-volumeClaims:
-  data: { }
-#    storageClassName: ""
-#    selector:
-#      matchLabels: { }
-#      matchExpressions: { }
-#    accessModes:
-#      - ReadWriteOnce
-#    resources:
-#      requests:
-#        storage: ""
-#      limits:
-#        storage: ""
-
 nodeSelector: { }
 tolerations: [ ]
 affinity: { }
