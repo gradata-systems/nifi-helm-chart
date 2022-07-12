@@ -98,6 +98,16 @@ extraEnv: [ ]
 #  - name: MY_VAR
 #    value: "some value"
 
+extraVolumes: [ ]
+#  - name: my-volume
+#    nfs:
+#      server: fs.example.com
+#      path: /my-volume
+
+extraVolumeMounts: [ ]
+#  - mountPath: /data/vol-1
+#    name: my-volume
+
 ingress:
   enabled: true
   ingressClassName: nginx

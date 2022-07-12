@@ -161,7 +161,11 @@ spec:
           {{- toYaml . | nindent 10 }}
         {{- end }}
         - name: data
+          {{- if .Values.persistence.volumeSpec }}
           {{- toYaml .Values.persistence.volumeSpec | nindent 10 }}
+          {{- else }}
+          emptyDir: { }
+          {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

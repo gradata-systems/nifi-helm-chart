@@ -86,9 +86,6 @@ spec:
               name: data
               subPath: conf
             {{- end }}
-            - mountPath: {{ $nifiHome }}/data/store
-              name: data
-              subPath: store
             {{- with .Values.persistence.repo }}
             - mountPath: {{ $nifiHome }}/flowfile_repository
               name: data
@@ -99,6 +96,9 @@ spec:
             - mountPath: {{ $nifiHome }}/provenance_repository
               name: data
               subPath: {{ printf "%s/%s" .path .dirs.provenance }}
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
             {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
@@ -147,6 +147,9 @@ spec:
               - key: custom-startup.sh
                 path: custom-startup.sh
                 mode: 0744
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
         {{- with .Values.encryption.repository.secretRef }}
         - name: secrets
           secret:
