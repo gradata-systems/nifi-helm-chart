@@ -24,6 +24,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "nifi-registry.fullname" . }}-http
+                name: {{ include "nifi-registry.fullname" . }}
                 port:
                   name: https

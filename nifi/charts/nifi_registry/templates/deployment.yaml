@@ -3,18 +3,16 @@
 {{- $bundleStorageDir := printf "%s/data/extension_bundles" $nifiRegistryHome }}
 {{- $databaseDriverPath := "/opt/nifi-registry/libs" }}
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: {{ include "nifi-registry.fullname" . }}
   labels:
     {{- include "nifi-registry.labels" . | nindent 4 }}
 spec:
-  podManagementPolicy: OrderedReady
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       {{- include "nifi-registry.selectorLabels" . | nindent 6 }}
-  serviceName: {{ include "nifi-registry.fullname" . }}
   template:
     metadata:
       labels:
@@ -162,6 +160,8 @@ spec:
         - name: database-driver
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        - name: data
+          {{- toYaml .Values.persistence.volumeSpec | nindent 10 }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -179,30 +179,3 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-  volumeClaimTemplates:
-    {{- range $name, $volumeClaim := .Values.volumeClaims }}
-    - metadata:
-        name: {{ $name }}
-        labels:
-          {{- include "nifi-registry.labels" $ | nindent 10 }}
-      spec:
-        {{- toYaml $volumeClaim | nindent 8 }}
-    {{- end }}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "nifi-registry.fullname" . }}
-  labels:
-    {{- include "nifi-registry.labels" . | nindent 4 }}
-spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-    {{- range $name, $number := .Values.ports }}
-    - name: {{ $name }}
-      port: {{ $number }}
-      protocol: TCP
-    {{- end }}
-  selector:
-    {{- include "nifi-registry.selectorLabels" . | nindent 4 }}

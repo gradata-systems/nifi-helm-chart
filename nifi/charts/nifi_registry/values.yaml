@@ -32,6 +32,10 @@ database:
       key: password
 
 persistence:
+  volumeSpec: {} # Required for storing config files and db/flows/bundles, depending on provider settings
+#    nfs:
+#      server: gs-fs01.internal
+#      path: /nifi-registry
   config:
     path: conf
     files:
