@@ -5,12 +5,6 @@ metadata:
   labels:
     {{- include "nifi-registry.labels" . | nindent 4 }}
 data:
-  providers.xml: |
-    {{- /* Mounted where an external database is used */}}
-    <flowPersistenceProvider>
-        <class>org.apache.nifi.registry.provider.flow.DatabaseFlowPersistenceProvider</class>
-    </flowPersistenceProvider>
-
   custom-startup.sh: |
     #!/bin/bash -e
 
@@ -19,6 +13,8 @@ data:
 
     authorizers_file='conf/authorizers.xml'
     login_providers_file='conf/identity-providers.xml'
+    providers_file='conf/providers.xml'
+    bootstrap_file='conf/bootstrap.conf'
 
     {{- /* Grant nodes cluster permissions */}}
     list_identities () {
@@ -52,6 +48,16 @@ data:
     insert_property 'TLS - Truststore Password'   "${LDAP_TLS_TRUSTSTORE_PASSWORD}"
     insert_property 'TLS - Truststore Type'       "${LDAP_TLS_TRUSTSTORE_TYPE}"
     insert_property 'TLS - Protocol'              "${LDAP_TLS_PROTOCOL}"
+
+    {{- /* Set the bootstrap encryption key */}}
+    prop_replace 'nifi.registry.bootstrap.sensitive.key' "${NIFI_REGISTRY_SENSITIVE_PROPERTIES_KEY}" "${bootstrap_file}"
+
+    {{- /* Use the database flow persistence provider if specified */}}
+    {{- if ne .Values.persistence.flow.provider "file" }}
+    persistence_provider='org.apache.nifi.registry.provider.flow.DatabaseFlowPersistenceProvider'
+    xmlstarlet ed --inplace --delete '//providers/flowPersistenceProvider/property' "${providers_file}"
+    xmlstarlet ed --inplace --update '//providers/flowPersistenceProvider/class' --value "${persistence_provider}" "${providers_file}"
+    {{- end }}
 
     {{- /* Set config file paths to persistent locations */}}
     conf_dir='./data/conf'

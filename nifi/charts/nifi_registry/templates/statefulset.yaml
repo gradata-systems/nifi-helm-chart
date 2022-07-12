@@ -30,6 +30,10 @@ spec:
               value: 0.0.0.0
             - name: NIFI_REGISTRY_WEB_HTTPS_PORT
               value: {{ .Values.ports.https | quote }}
+            - name: NIFI_REGISTRY_SENSITIVE_PROPERTIES_KEY
+              valueFrom:
+                secretKeyRef:
+                  {{- toYaml .Values.global.encryption.sensitivePropertiesKey.secretRef | nindent 18 }}
             {{- if .Values.database.external }}
             {{- with .Values.database.url }}
             - name: NIFI_REGISTRY_DB_URL
@@ -106,10 +110,6 @@ spec:
               name: database-driver
               subPath: {{ .Values.database.driver.fileName }}
               readOnly: true
-              {{- /* Use the DatabaseFlowPersistenceProvider */}}
-            - mountPath: /opt/nifi-registry/conf/providers.xml
-              name: config
-              readOnly: true
             {{- else }}
               {{- /* If using an internal database, mount a volume if one was specified */}}
             - mountPath: {{ $nifiRegistryHome }}/database
@@ -157,12 +157,7 @@ spec:
         - name: config
           configMap:
             name: {{ include "nifi-registry.fullname" . }}
-            items:
-              - key: custom-startup.sh
-                path: custom-startup.sh
-                mode: 0744
-              - key: providers.xml
-                path: providers.xml
+            defaultMode: 0500
         {{- with .Values.database.driver.volumeSpec }}
         - name: database-driver
           {{- toYaml . | nindent 10 }}

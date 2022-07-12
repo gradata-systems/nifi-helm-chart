@@ -8,6 +8,12 @@ global:
   nifi:
     nodeCount: 1
 
+  encryption:
+    sensitivePropertiesKey:
+      secretRef:
+        name: ""
+        key: ""
+
   tls:
     certificate:
       duration: 8760h # 365 days
@@ -45,11 +51,6 @@ debugStartup: false
 uiRefreshInterval: 10 sec
 
 encryption:
-  # Mandatory. Sets the password in `nifi.sensitive.props.key`
-  sensitiveProperties:
-    secretRef:
-      name: ""
-      key: ""
   # Used to encrypt all repositories
   repository:
     keyId: 1
