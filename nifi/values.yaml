@@ -56,7 +56,7 @@ encryption:
     keyId: 1
     secretRef:
       name: ""
-      key: "" # 64-character hex-encoded key
+      key: repository.p12 # File extension must be either .p12 or .bcfks
 
 persistence:
   config:

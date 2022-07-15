@@ -112,7 +112,7 @@ spec:
               readOnly: true
             - mountPath: {{ include "nifi.tlsPath" . }}
               name: tls
-            - mountPath: {{ $nifiHome }}/conf/repository.p12
+            - mountPath: {{ $nifiHome }}/conf/{{ .Values.encryption.repository.secretRef.key }}
               name: secrets
               subPath: {{ .Values.encryption.repository.secretRef.key }}
               readOnly: true

@@ -24,11 +24,11 @@ data:
     export NIFI_WEB_HTTPS_HOST="${host_name}"
     export NIFI_WEB_PROXY_HOST="${host_name},{{ .Values.ingress.hostName }},{{ .Values.ingress.nodeBaseHostName }}${pod_index}.{{ .Values.ingress.hostName }}"
 
-    {{- /* Provenance repository encryption key */}}
+    {{- /* Enable repository encryption */}}
     prop_replace 'nifi.repository.encryption.protocol.version' '1'
     prop_replace 'nifi.repository.encryption.key.id' '{{ .Values.encryption.repository.keyId }}'
     prop_replace 'nifi.repository.encryption.key.provider' 'KEYSTORE'
-    prop_replace 'nifi.repository.encryption.key.provider.keystore.location' 'conf/repository.p12'
+    prop_replace 'nifi.repository.encryption.key.provider.keystore.location' 'conf/{{ .Values.encryption.repository.secretRef.key }}'
     prop_replace 'nifi.repository.encryption.key.provider.keystore.password' "${KEYSTORE_PASSWORD}"
 
     {{- /* Replace properties not exposed by environment variables */}}
