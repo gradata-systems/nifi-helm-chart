@@ -65,6 +65,8 @@ spec:
               value: {{ .Values.jvmHeap.max | quote }}
             - name: NIFI_WEB_HTTPS_PORT
               value: {{ .Values.ports.https | quote }}
+            - name: NIFI_REMOTE_INPUT_SOCKET_PORT
+              value: {{ .Values.ports.remoteinput | quote }}
             {{- if .Values.cluster.enabled }}
             - name: NIFI_CLUSTER_IS_NODE
               value: "true"
@@ -170,7 +172,7 @@ spec:
               csi.cert-manager.io/issuer-name: {{ .issuerRef.name | quote }}
               csi.cert-manager.io/issuer-kind: {{ .issuerRef.kind | quote }}
               csi.cert-manager.io/common-name: ${POD_NAME}.{{ include "nifi.fullname" $ }}.{{ $.Release.Namespace }}
-              csi.cert-manager.io/dns-names: ${POD_NAME}.{{ include "nifi.fullname" $ }}.{{ $.Release.Namespace }}
+              csi.cert-manager.io/dns-names: ${POD_NAME}.{{ include "nifi.fullname" $ }}.{{ $.Release.Namespace }},{{ include "nifi.fullname" $ }}-http.{{ $.Release.Namespace }}
               csi.cert-manager.io/duration: {{ .duration }}
               csi.cert-manager.io/key-usages: server auth,client auth
               csi.cert-manager.io/renew-before: {{ .renewBefore | quote }}

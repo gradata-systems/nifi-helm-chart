@@ -9,6 +9,7 @@ spec:
   commonName: {{ include "nifi.fullname" . }}.{{ .Release.Namespace }}
   dnsNames:
     - {{ .Values.ingress.hostName }}
+    - {{ include "nifi.siteToSiteHostName" . }}
     {{- include "nifi.ingressNodeList" . | nindent 4 }}
   usages:
     - server auth

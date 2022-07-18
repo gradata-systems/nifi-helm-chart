@@ -77,7 +77,7 @@ persistence:
 ports:
   https: 8443
   cluster: 11443
-  remoteinput: 10000
+  remoteinput: 10443
   loadbalance: 6342
 
 cluster:
@@ -97,7 +97,6 @@ extraPorts:
     ingress:
       path: /datafeed # Omit if ingress is not required
       pathType: Exact
-
 
 # Extra config properties to set at runtime
 extraConfig:
@@ -121,8 +120,9 @@ extraVolumeMounts: [ ]
 ingress:
   enabled: true
   ingressClassName: nginx
-  hostName: "" # nifi.example.com
-  nodeBaseHostName: "node-" # Subdomain prefix for external traffic
+  hostName: example.com # nifi.example.com
+  siteToSite:
+    subDomain: s2s # Subdomain for site-to-site traffic (e.g. s2s.example.com)
   annotations: { }
 
 jvmHeap:

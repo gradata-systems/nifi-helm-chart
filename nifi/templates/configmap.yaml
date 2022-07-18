@@ -1,3 +1,4 @@
+{{- $serviceHostName := printf "%s-http.%s" (include "nifi.fullname" . ) .Release.Namespace }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,6 +12,12 @@ data:
   custom-startup.sh: |
     #!/bin/bash -e
 
+    prop_add () {
+      target_file="${3:-${nifi_props_file}}"
+      echo "adding property to target file ${target_file}"
+      echo "$1=$2" >> "${target_file}"
+    }
+
     authorizers_file='conf/authorizers.xml'
     nifi_properties_file='conf/nifi.properties'
     scripts_dir='/opt/nifi/scripts'
@@ -22,7 +29,28 @@ data:
 
     prop_replace 'nifi.web.https.host' "${host_name}"
     export NIFI_WEB_HTTPS_HOST="${host_name}"
-    export NIFI_WEB_PROXY_HOST="${host_name},{{ .Values.ingress.hostName }},{{ .Values.ingress.nodeBaseHostName }}${pod_index}.{{ .Values.ingress.hostName }}"
+    export NIFI_WEB_PROXY_HOST=" \
+      ${host_name}, \
+      {{ .Values.ingress.hostName }}, \
+      {{ include "nifi.siteToSiteHostName" . }}, \
+      {{ include "nifi.siteToSiteHostName" . }}:443, \
+      {{ printf "%s-${pod_index}.%s" (include "nifi.fullname" .) (include "nifi.siteToSiteHostName" .) }}, \
+      {{ printf "%s-${pod_index}.%s" (include "nifi.fullname" .) (include "nifi.siteToSiteHostName" .) }}:443, \
+      {{ $serviceHostName }}, \
+      {{ $serviceHostName }}:{{ .Values.ports.https }}"
+
+    {{- /* S2S cluster-local connections */}}
+    export NIFI_REMOTE_INPUT_HOST="${host_name}"
+    prop_add 'nifi.remote.route.raw.cluster.when' '${s2s.source.hostname:equals('\''{{ $serviceHostName }}'\'')}'
+    prop_add 'nifi.remote.route.raw.cluster.hostname' '${s2s.target.hostname}'
+    prop_add 'nifi.remote.route.raw.cluster.port' {{ .Values.ports.remoteinput | squote }}
+    prop_add 'nifi.remote.route.raw.cluster.secure' 'true'
+
+    {{- /* S2S connections via Ingress */}}
+    prop_add 'nifi.remote.route.http.ingress.when' '${X-ProxyHost:contains('\''{{ include "nifi.siteToSiteHostName" . }}'\'')}'
+    prop_add 'nifi.remote.route.http.ingress.hostname' '${s2s.target.hostname:substringBefore('\''.'\'')}.{{ include "nifi.siteToSiteHostName" . }}'
+    prop_add 'nifi.remote.route.http.ingress.port' '443'
+    prop_add 'nifi.remote.route.http.ingress.secure' 'true'
 
     {{- /* Enable repository encryption */}}
     prop_replace 'nifi.repository.encryption.protocol.version' '1'
@@ -43,9 +71,8 @@ data:
     prop_replace 'nifi.zookeeper.security.truststorePasswd' "${TRUSTSTORE_PASSWORD}"
 
     {{- /* Connect to NiFi Registry. These lines are commented out in the base config file. */}}
-    sed -i -E "s|^.*(nifi.nar.library.provider.nifi-registry.implementation=).*$|\1org.apache.nifi.registry.extension.NiFiRegistryNarProvider|g" "${nifi_properties_file}"
-
     nifi_registry_url="https://{{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}:{{ .Values.nifi_registry.ports.https }}"
+    sed -i -E "s|^.*(nifi.nar.library.provider.nifi-registry.implementation=).*$|\1org.apache.nifi.registry.extension.NiFiRegistryNarProvider|g" "${nifi_properties_file}"
     sed -i -E "s|^.*(nifi.nar.library.provider.nifi-registry.url=).*$|\1${nifi_registry_url}|g" "${nifi_properties_file}"
 
     {{- /* Grant nodes cluster permissions */}}
@@ -55,6 +82,8 @@ data:
         node_dn="CN={{ include "nifi.fullname" . }}-${i}.{{ include "nifi.fullname" . }}.{{ .Release.Namespace }}"
         node_identities="${node_identities}<property name=\"$1 Node-${i}\">${node_dn}</property>\n"
       done
+      ingress_dn="CN={{ include "nifi.fullname" . }}.{{ .Release.Namespace }}"
+      node_identities="${node_identities}<property name=\"$1 Node-Ingress\">${ingress_dn}</property>\n"
       sed -i -E "s|(<property name=\"$1 1\">.*</property>)|\1\n${node_identities}|g" "${authorizers_file}"
     }
     list_identities 'Node Identity'

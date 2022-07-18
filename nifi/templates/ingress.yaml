@@ -7,6 +7,7 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/backend-protocol: HTTPS
     nginx.ingress.kubernetes.io/affinity: cookie
+    nginx.ingress.kubernetes.io/affinity-mode: persistent
     {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -15,9 +16,6 @@ spec:
   tls:
     - hosts:
         - {{ .Values.ingress.hostName }}
-        {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
-        - {{ printf "%s%d.%s" $.Values.ingress.nodeBaseHostName $i $.Values.ingress.hostName }}
-        {{- end }}
       secretName: {{ include "nifi.fullname" . }}-tls
   rules:
     - host: {{ .Values.ingress.hostName }}
@@ -36,13 +34,55 @@ spec:
             pathType: {{ $port.ingress.pathType | default "Exact" }}
             backend:
               service:
+                {{- if $port.nodePort }}
+                name: {{ include "nifi.fullname" $ }}-nodeport
+                {{- else }}
                 name: {{ include "nifi.fullname" $ }}-http
+                {{- end }}
                 port:
                   name: {{ $name }}
           {{- end }}
           {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "nifi.fullname" . }}-s2s
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    nginx.ingress.kubernetes.io/proxy-ssl-secret: {{ .Release.Namespace}}/{{ include "nifi.fullname" . }}-tls
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "off"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header X-ProxyScheme https;
+      proxy_set_header X-ProxyHost $server_name;
+      proxy_set_header X-ProxyPort 443;
+      proxy_set_header X-ProxiedEntitiesChain $ssl_client_s_dn;
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  tls:
+    - hosts:
+        - {{ include "nifi.siteToSiteHostName" . }}
+        {{- include "nifi.ingressNodeList" . | nindent 8 }}
+      secretName: {{ include "nifi.fullname" . }}-tls
+  rules:
+    - host: {{ include "nifi.siteToSiteHostName" . }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "nifi.fullname" . }}-http
+                port:
+                  name: https
     {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
-    - host: {{ printf "%s%d.%s" $.Values.ingress.nodeBaseHostName $i $.Values.ingress.hostName }}
+    - host: {{ printf "%s-%d.%s" (include "nifi.fullname" $) $i (include "nifi.siteToSiteHostName" $) }}
       http:
         paths:
           - path: /

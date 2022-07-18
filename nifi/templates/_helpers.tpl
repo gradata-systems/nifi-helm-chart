@@ -53,15 +53,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
 {{- end }}
 
-{{- define "nifi.ingressNodeList" -}}
-{{- range $i, $e := until (.Values.global.nifi.nodeCount | int) }}
-{{ printf "- %s%d.%s" $.Values.ingress.nodeBaseHostName $i $.Values.ingress.hostName }}
-{{- end }}
+{{- define "nifi.siteToSiteHostName" -}}
+{{ printf "%s.%s" .Values.ingress.siteToSite.subDomain .Values.ingress.hostName }}
 {{- end }}
 
-{{- define "nifi.ingressNodes" -}}
+{{- define "nifi.ingressNodeList" -}}
 {{- range $i, $e := until (.Values.global.nifi.nodeCount | int) }}
-{{- printf "%s%d.%s," $.Values.ingress.nodeBaseHostName $i $.Values.ingress.hostName }}
+{{ printf "- %s-%d.%s" (include "nifi.fullname" $) $i (include "nifi.siteToSiteHostName" $) }}
 {{- end }}
 {{- end }}
 
@@ -76,6 +74,9 @@ NiFi Registry FQDN
 zookeeper-url
 {{- end }}
 
+{{/*
+Certificate path constants
+*/}}
 {{- $keystoreFile := "keystore.p12" }}
 {{- $truststoreFile := "truststore.p12" }}
 {{- define "nifi.certPath" -}}
@@ -85,6 +86,22 @@ zookeeper-url
 {{ "/opt/tls" }}
 {{- end }}
 
+{{/*
+Returns whether `.Values.extraPorts` contains one or more `nodePort` entries
+*/}}
+{{- define "nifi.hasNodePorts" -}}
+{{- $hasNodePorts := false }}
+{{- range $name, $port := .Values.extraPorts }}
+{{- if and (hasKey $port "nodePort") (gt (int $port.nodePort) 0) }}
+{{- $hasNodePorts = true }}
+{{- end }}
+{{- end }}
+{{- $hasNodePorts }}
+{{- end }}
+
+{{/*
+Common NiFi/Registry keystore environment variables
+*/}}
 {{- define "nifi.keystoreEnvironment" -}}
 - name: KEYSTORE_PATH
   value: {{ include "nifi.tlsPath" . }}/keystore.p12
@@ -104,6 +121,9 @@ zookeeper-url
       {{- toYaml .Values.global.tls.certificate.keystorePasswordSecretRef | nindent 6 }}
 {{- end }}
 
+{{/*
+Comon NiFi/Registry LDAP environment variables
+*/}}
 {{- define "nifi.ldapEnvironment" -}}
 {{- with .Values.global.ldap -}}
 - name: AUTH
