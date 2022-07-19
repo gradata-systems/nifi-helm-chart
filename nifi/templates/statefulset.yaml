@@ -128,7 +128,7 @@ spec:
               subPath: custom-startup.sh
               readOnly: true
             {{- with .Values.persistence.config }}
-            - mountPath: {{ $nifiHome}}/data/conf
+            - mountPath: {{ $nifiHome }}/data/conf
               name: data
               subPath: conf
             {{- end }}

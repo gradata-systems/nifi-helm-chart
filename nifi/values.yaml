@@ -61,6 +61,11 @@ encryption:
       name: ""
       key: repository.p12 # File extension must be either .p12 or .bcfks
 
+# Override log verbosity settings in conf/logback.xml
+logging:
+  levels: { }
+#    org.apache.nifi.web.security: DEBUG
+
 persistence:
   config:
     path: conf

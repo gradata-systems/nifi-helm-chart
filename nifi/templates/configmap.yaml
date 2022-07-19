@@ -21,6 +21,7 @@ data:
     authorizers_file='conf/authorizers.xml'
     bootstrap_file='conf/bootstrap.conf'
     nifi_properties_file='conf/nifi.properties'
+    logback_file='conf/logback.xml'
     scripts_dir='/opt/nifi/scripts'
     [ -f "${scripts_dir}/common.sh" ] && . "${scripts_dir}/common.sh"
 
@@ -126,6 +127,11 @@ data:
 
     {{- with .Values.ui.maxThreads }}
     prop_replace 'nifi.web.jetty.threads' {{ . | squote }}
+    {{- end }}
+
+    {{- /* Set user logging levels */}}
+    {{- range $logger, $level := .Values.logging.levels }}
+    xmlstarlet ed --inplace --update "//logger[@name='{{ $logger }}']/@level" --value '{{ $level }}' "${logback_file}"
     {{- end }}
 
     {{- range $key, $value := .Values.extraConfig.nifiProperties }}

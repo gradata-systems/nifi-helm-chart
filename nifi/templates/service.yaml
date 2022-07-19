@@ -16,14 +16,12 @@ spec:
       protocol: TCP
       name: remoteinput
     {{- /* Only include extra ports that don't have a nodePort specified. For those that do, include them in a separate Service */}}
-    {{- if .Values.extraPorts }}
     {{- range $name, $port := .Values.extraPorts }}
     {{- if not $port.nodePort }}
     - name: {{ $name }}
       port: {{ $port.containerPort }}
       targetPort: {{ $port.containerPort }}
       protocol: {{ $port.protocol | default "TCP" }}
-    {{- end }}
     {{- end }}
     {{- end }}
   selector:
