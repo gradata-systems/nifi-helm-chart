@@ -53,7 +53,7 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/backend-protocol: HTTPS
     nginx.ingress.kubernetes.io/proxy-ssl-secret: {{ .Release.Namespace}}/{{ include "nifi.fullname" . }}-tls
-    nginx.ingress.kubernetes.io/proxy-ssl-verify: "off"
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "true"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_set_header X-ProxyScheme https;
@@ -89,7 +89,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "nifi.fullname" $ }}-node-{{ $i }}
+                name: {{ include "nifi.fullname" $ }}-{{ $i }}
                 port:
                   name: https
     {{- end }}

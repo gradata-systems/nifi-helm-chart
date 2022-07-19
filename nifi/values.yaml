@@ -48,7 +48,10 @@ image:
 # Set to `true` to pause at startup before loading the application
 debugStartup: false
 
-uiRefreshInterval: 10 sec
+ui:
+  refreshInterval: 10 sec
+  timeZone: "" # IANA timezone identifier. Time is displayed using this timezone in the UI.
+  maxThreads: "" # Maximum number of Jetty threads to use for UI and HTTP site-to-site connections
 
 encryption:
   # Used to encrypt all repositories
@@ -83,7 +86,7 @@ ports:
 cluster:
   enabled: true
   traffic:
-    maxThreads: 50 # Max number of threads used for inter-node communication
+    maxThreads: 100 # Max number of threads used for inter-node communication
   zookeeper:
     connectionString: "" # zk01:2181,zk02:2181,zk03:2181
     rootNode: /nifi

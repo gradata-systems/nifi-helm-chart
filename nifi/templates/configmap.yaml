@@ -19,6 +19,7 @@ data:
     }
 
     authorizers_file='conf/authorizers.xml'
+    bootstrap_file='conf/bootstrap.conf'
     nifi_properties_file='conf/nifi.properties'
     scripts_dir='/opt/nifi/scripts'
     [ -f "${scripts_dir}/common.sh" ] && . "${scripts_dir}/common.sh"
@@ -47,7 +48,7 @@ data:
     prop_add 'nifi.remote.route.raw.cluster.secure' 'true'
 
     {{- /* S2S connections via Ingress */}}
-    prop_add 'nifi.remote.route.http.ingress.when' '${X-ProxyHost:contains('\''{{ include "nifi.siteToSiteHostName" . }}'\'')}'
+    prop_add 'nifi.remote.route.http.ingress.when' '${X-ProxyHost:equals('\''{{ include "nifi.siteToSiteHostName" . }}'\'')}'
     prop_add 'nifi.remote.route.http.ingress.hostname' '${s2s.target.hostname:substringBefore('\''.'\'')}.{{ include "nifi.siteToSiteHostName" . }}'
     prop_add 'nifi.remote.route.http.ingress.port' '443'
     prop_add 'nifi.remote.route.http.ingress.secure' 'true'
@@ -117,7 +118,15 @@ data:
     {{- end }}
 
     {{- /* Set UI autorefresh interval */}}
-    prop_replace 'nifi.ui.autorefresh.interval' {{ .Values.uiRefreshInterval | squote }}
+    prop_replace 'nifi.ui.autorefresh.interval' {{ .Values.ui.refreshInterval | squote }}
+
+    {{- with .Values.ui.timeZone }}
+    echo 'java.arg.8=-Duser.timezone={{ . }}' >> "${bootstrap_file}"
+    {{- end }}
+
+    {{- with .Values.ui.maxThreads }}
+    prop_replace 'nifi.web.jetty.threads' {{ . | squote }}
+    {{- end }}
 
     {{- range $key, $value := .Values.extraConfig.nifiProperties }}
     prop_replace {{ $key | squote }} {{ $value | quote }}

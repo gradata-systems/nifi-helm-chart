@@ -61,7 +61,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "nifi.fullname" $ }}-node-{{ $i }}
+  name: {{ include "nifi.fullname" $ }}-{{ $i }}
   labels:
     {{- include "nifi.labels" $ | nindent 4 }}
 spec:
