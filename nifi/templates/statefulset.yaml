@@ -92,6 +92,11 @@ spec:
               containerPort: {{ $number }}
               protocol: TCP
             {{- end }}
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.containerPort }}
+              protocol: TCP
+            {{- end }}
             {{- if .Values.extraPorts }}
             {{- range $name, $port := .Values.extraPorts }}
             - name: {{ $name }}

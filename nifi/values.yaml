@@ -91,6 +91,12 @@ cluster:
     connectionString: "" # zk01:2181,zk02:2181,zk03:2181
     rootNode: /nifi
 
+metrics:
+  enabled: false
+  containerPort: 9092
+  basePath: /metrics # Metrics are available for each pod at: /metrics/<pod name>
+  requireClientCertificate: false
+
 # Additional ports and Ingress rules to configure for each node
 extraPorts:
   datafeed:

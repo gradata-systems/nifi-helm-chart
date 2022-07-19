@@ -43,6 +43,42 @@ spec:
                   name: {{ $name }}
           {{- end }}
           {{- end }}
+{{- if .Values.metrics.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "nifi.fullname" . }}-metrics
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    nginx.ingress.kubernetes.io/rewrite-target: /metrics/
+    {{- if .Values.metrics.requireClientCertificate }}
+    nginx.ingress.kubernetes.io/auth-tls-secret: {{ .Release.Namespace }}/{{ include "nifi.fullname" . }}-tls
+    nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "true"
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hostName }}
+      secretName: {{ include "nifi.fullname" . }}-tls
+  rules:
+    - host: {{ .Values.ingress.hostName }}
+      http:
+        paths:
+        {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
+          - path: {{ $.Values.metrics.basePath}}/{{ include "nifi.fullname" $ }}-{{ $i }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "nifi.fullname" $ }}-{{ $i }}
+                port:
+                  name: metrics
+        {{- end }}
+{{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -54,7 +90,6 @@ metadata:
     nginx.ingress.kubernetes.io/backend-protocol: HTTPS
     nginx.ingress.kubernetes.io/proxy-ssl-secret: {{ .Release.Namespace}}/{{ include "nifi.fullname" . }}-tls
     nginx.ingress.kubernetes.io/proxy-ssl-verify: "true"
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_set_header X-ProxyScheme https;
       proxy_set_header X-ProxyHost $server_name;

@@ -16,16 +16,13 @@ spec:
       protocol: TCP
       name: remoteinput
     {{- /* Only include extra ports that don't have a nodePort specified. For those that do, include them in a separate Service */}}
-    {{- if not (include "nifi.hasNodePorts" . ) }}
+    {{- if .Values.extraPorts }}
     {{- range $name, $port := .Values.extraPorts }}
     {{- if not $port.nodePort }}
     - name: {{ $name }}
       port: {{ $port.containerPort }}
       targetPort: {{ $port.containerPort }}
       protocol: {{ $port.protocol | default "TCP" }}
-      {{- if $port.nodePort }}
-      nodePort: {{ $port.nodePort }}
-      {{- end }}
     {{- end }}
     {{- end }}
     {{- end }}
@@ -72,6 +69,12 @@ spec:
       targetPort: https
       protocol: TCP
       name: https
+    {{- if $.Values.metrics.enabled }}
+    - port: {{ $.Values.metrics.containerPort }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
   selector:
     statefulset.kubernetes.io/pod-name: {{ include "nifi.fullname" $ }}-{{ $i }}
     {{- include "nifi.selectorLabels" $ | nindent 4 }}
