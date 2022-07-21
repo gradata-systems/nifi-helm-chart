@@ -6,9 +6,6 @@ metadata:
   labels:
     {{- include "nifi.labels" . | nindent 4 }}
 data:
-  flow.xml:
-    {{- (tpl (.Files.Get "config/flow.xml") .) | nindent 4 }}
-
   custom-startup.sh: |
     #!/bin/bash -e
 
