@@ -3,7 +3,8 @@
 # Declare variables to be passed into your templates.
 
 global:
-  containerRegistry: ""
+  busybox:
+    repository: busybox
 
   nifi:
     nodeCount: 1

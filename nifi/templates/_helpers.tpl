@@ -46,13 +46,6 @@ app.kubernetes.io/name: {{ include "nifi.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "nifi.image" -}}
-{{ if .Values.global.containerRegistry }}
-{{ (printf "%s/" .Values.global.containerRegistry) }}
-{{ end }}
-{{- .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
-{{- end }}
-
 {{- define "nifi.siteToSiteHostName" -}}
 {{ printf "%s.%s" .Values.ingress.siteToSite.subDomain .Values.ingress.hostName }}
 {{- end }}
@@ -68,10 +61,6 @@ NiFi Registry FQDN
 */}}
 {{- define "nifi.registryUrl" -}}
 {{ .Release.Name }}-{{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}.svc
-{{- end }}
-
-{{- define "nifi.zookeeperUrl" -}}
-zookeeper-url
 {{- end }}
 
 {{/*
