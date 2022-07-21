@@ -20,7 +20,7 @@ spec:
     spec:
       initContainers:
         - name: take-ownership
-          image: {{ if .Values.global.containerRegistry }}{{ (printf "%s/" .Values.global.containerRegistry) }}{{ end }}busybox
+          image: {{ .Values.global.busybox.repository }}
           command:
             - sh
             - -c
@@ -50,7 +50,7 @@ spec:
             {{- end }}
       containers:
         - name: {{ include "nifi-registry.name" . }}
-          image: {{ if .Values.global.containerRegistry }}{{ (printf "%s/" .Values.global.containerRegistry) }}{{ end }}{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: [ "../scripts/custom-startup.sh" ]
           env:
