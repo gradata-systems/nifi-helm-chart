@@ -90,7 +90,7 @@ data:
 
     {{- /* Set file and directory paths to persistent locations */}}
     {{- with .Values.persistence }}
-    conf_dir='./data/conf'
+    conf_dir='./persistent_conf'
     prop_replace 'nifi.flow.configuration.json.file' "${conf_dir}/{{ .config.files.flowJson }}"
     prop_replace 'nifi.flow.configuration.archive.dir' "${conf_dir}/{{ .config.dirs.archive }}"
 

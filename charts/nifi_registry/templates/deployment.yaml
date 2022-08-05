@@ -35,7 +35,7 @@ spec:
               name: data
               subPath: {{ .Values.persistence.database.path }}
             {{- end }}
-            - mountPath: /data/conf
+            - mountPath: /persistent_conf
               name: data
               subPath: {{ .Values.persistence.config.path }}
             {{- if eq .Values.persistence.flow.provider "file" }}
@@ -144,7 +144,7 @@ spec:
               name: data
               subPath: {{ .Values.persistence.database.path }}
             {{- end }}
-            - mountPath: {{ $nifiRegistryHome }}/data/conf
+            - mountPath: {{ $nifiRegistryHome }}/persistent_conf
               name: data
               subPath: {{ .Values.persistence.config.path }}
             {{- if eq .Values.persistence.flow.provider "file" }}

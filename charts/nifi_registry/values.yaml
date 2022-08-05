@@ -3,6 +3,7 @@
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
+maxUnavailable: 1
 
 image:
   repository: apache/nifi-registry
