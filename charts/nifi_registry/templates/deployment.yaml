@@ -10,6 +10,9 @@ metadata:
     {{- include "nifi-registry.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: {{ .Values.maxUnavailable }}
   selector:
     matchLabels:
       {{- include "nifi-registry.selectorLabels" . | nindent 6 }}
