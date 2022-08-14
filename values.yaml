@@ -98,10 +98,16 @@ cluster:
     rootNode: /nifi
 
 metrics:
-  enabled: false
-  containerPort: 9092
-  basePath: /metrics # Metrics are available for each pod at: /metrics/<pod name>
-  requireClientCertificate: false
+  # Expose metrics for each node via Ingress
+  ingress:
+    enabled: false
+    basePath: /metrics # Metrics are available externally via Ingress for each pod at: /metrics/<pod name>
+    requireClientCertificate: false
+
+  # Create a ServiceMonitor to enable Prometheus to scrape metrics from each pod
+  serviceMonitor:
+    enabled: false
+    interval: 10s
 
 # Additional ports and Ingress rules to configure for each node
 extraPorts:

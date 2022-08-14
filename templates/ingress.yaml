@@ -43,7 +43,7 @@ spec:
                   name: {{ $name }}
           {{- end }}
           {{- end }}
-{{- if .Values.metrics.enabled }}
+{{- if .Values.metrics.ingress.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -54,7 +54,7 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/backend-protocol: HTTPS
     nginx.ingress.kubernetes.io/rewrite-target: /metrics/
-    {{- if .Values.metrics.requireClientCertificate }}
+    {{- if .Values.metrics.ingress.requireClientCertificate }}
     nginx.ingress.kubernetes.io/auth-tls-secret: {{ .Release.Namespace }}/{{ include "nifi.fullname" . }}-tls
     nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "true"
     nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
@@ -70,7 +70,7 @@ spec:
       http:
         paths:
         {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
-          - path: {{ $.Values.metrics.basePath}}/{{ include "nifi.fullname" $ }}-{{ $i }}
+          - path: {{ $.Values.metrics.ingress.basePath}}/{{ include "nifi.fullname" $ }}-{{ $i }}
             pathType: Prefix
             backend:
               service:
