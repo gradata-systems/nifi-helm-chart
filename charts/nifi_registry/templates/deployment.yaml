@@ -22,6 +22,20 @@ spec:
         {{- include "nifi-registry.selectorLabels" . | nindent 8 }}
     spec:
       initContainers:
+        - name: copy-mysql-driver
+          image: {{ .Values.global.busybox.repository }}
+          command:
+            - sh
+            - -c
+            - |
+              cp /source/{{ .Values.database.driver.fileName }} /dest/
+          volumeMounts:
+            - mountPath: /source/{{ .Values.database.driver.fileName }}
+              name: dbdriver-source
+              subPath: {{ .Values.database.driver.fileName }}
+              readOnly: true
+            - mountPath: /dest
+              name: dbdriver
         - name: take-ownership
           image: {{ .Values.global.busybox.repository }}
           command:
@@ -138,7 +152,7 @@ spec:
             {{- if .Values.database.external }}
               {{- /* MySQL or Postgres database driver */}}
             - mountPath: {{ $databaseDriverPath }}/{{ .Values.database.driver.fileName }}
-              name: database-driver
+              name: dbdriver
               subPath: {{ .Values.database.driver.fileName }}
               readOnly: true
             {{- else }}
@@ -190,9 +204,11 @@ spec:
             name: {{ include "nifi-registry.fullname" . }}
             defaultMode: 0500
         {{- with .Values.database.driver.volumeSpec }}
-        - name: database-driver
+        - name: dbdriver-source
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        - name: dbdriver
+          emptyDir: { }
         - name: data
           {{- if .Values.persistence.volumeSpec }}
           {{- toYaml .Values.persistence.volumeSpec | nindent 10 }}
