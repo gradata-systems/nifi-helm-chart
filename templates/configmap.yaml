@@ -52,11 +52,13 @@ data:
     prop_add 'nifi.remote.route.http.ingress.secure' 'true'
 
     {{- /* Enable repository encryption */}}
+    {{- if .Values.encryption.repository.enabled }}
     prop_replace 'nifi.repository.encryption.protocol.version' '1'
     prop_replace 'nifi.repository.encryption.key.id' '{{ .Values.encryption.repository.keyId }}'
     prop_replace 'nifi.repository.encryption.key.provider' 'KEYSTORE'
     prop_replace 'nifi.repository.encryption.key.provider.keystore.location' 'conf/{{ .Values.encryption.repository.secretRef.key }}'
     prop_replace 'nifi.repository.encryption.key.provider.keystore.password' "${KEYSTORE_PASSWORD}"
+    {{- end }}
 
     {{- /* Replace properties not exposed by environment variables */}}
     {{- if .Values.cluster.enabled }}

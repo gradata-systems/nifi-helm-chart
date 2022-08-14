@@ -8,6 +8,12 @@
           <option value="values.yaml" />
         </option>
       </HelmParameters>
+      <HelmParameters>
+        <option name="chartPath" value="$PROJECT_DIR$" />
+        <option name="valuesFiles">
+          <option value="values.yaml" />
+        </option>
+      </HelmParameters>
     </option>
   </component>
 </project>

@@ -57,6 +57,7 @@ ui:
 encryption:
   # Used to encrypt all repositories
   repository:
+    enabled: false
     keyId: 1
     secretRef:
       name: ""
@@ -88,6 +89,7 @@ ports:
   cluster: 11443
   remoteinput: 10443
   loadbalance: 6342
+  metrics: 9092
 
 cluster:
   enabled: true
