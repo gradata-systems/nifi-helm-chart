@@ -32,7 +32,7 @@ spec:
             runAsUser: 0
             runAsNonRoot: false
           volumeMounts:
-            - mountPath: /data/conf
+            - mountPath: /data/persistent_conf
               name: data
               subPath: conf
             {{- with .Values.persistence.repo }}
@@ -92,11 +92,6 @@ spec:
               containerPort: {{ $number }}
               protocol: TCP
             {{- end }}
-            {{- if .Values.metrics.enabled }}
-            - name: metrics
-              containerPort: {{ .Values.metrics.containerPort }}
-              protocol: TCP
-            {{- end }}
             {{- if .Values.extraPorts }}
             {{- range $name, $port := .Values.extraPorts }}
             - name: {{ $name }}
@@ -119,16 +114,18 @@ spec:
               readOnly: true
             - mountPath: {{ include "nifi.tlsPath" . }}
               name: tls
+            {{- if .Values.encryption.repository.enabled }}
             - mountPath: {{ $nifiHome }}/conf/{{ .Values.encryption.repository.secretRef.key }}
               name: secrets
               subPath: {{ .Values.encryption.repository.secretRef.key }}
               readOnly: true
+            {{- end }}
             - mountPath: /opt/nifi/scripts/custom-startup.sh
               name: config
               subPath: custom-startup.sh
               readOnly: true
             {{- with .Values.persistence.config }}
-            - mountPath: {{ $nifiHome }}/data/conf
+            - mountPath: {{ $nifiHome }}/persistent_conf
               name: data
               subPath: conf
             {{- end }}
@@ -196,11 +193,13 @@ spec:
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+        {{- if .Values.encryption.repository.enabled }}
         {{- with .Values.encryption.repository.secretRef }}
         - name: secrets
           secret:
             secretName: {{ .name }}
             defaultMode: 0400
+        {{- end }}
         {{- end }}
       securityContext:
         runAsNonRoot: true

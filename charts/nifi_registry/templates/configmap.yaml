@@ -60,7 +60,7 @@ data:
     {{- end }}
 
     {{- /* Set config file paths to persistent locations */}}
-    conf_dir='./data/conf'
+    conf_dir='./persistent_conf'
     {{- with .Values.persistence }}
     sed -i -E "s|(<property name=\"Users File\">).*(</property>)|\1${conf_dir}/{{ .config.files.users }}\2|g" "${authorizers_file}"
     {{- end }}

@@ -10,6 +10,9 @@ metadata:
     {{- include "nifi-registry.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: {{ .Values.maxUnavailable }}
   selector:
     matchLabels:
       {{- include "nifi-registry.selectorLabels" . | nindent 6 }}
@@ -19,6 +22,20 @@ spec:
         {{- include "nifi-registry.selectorLabels" . | nindent 8 }}
     spec:
       initContainers:
+        - name: copy-mysql-driver
+          image: {{ .Values.global.busybox.repository }}
+          command:
+            - sh
+            - -c
+            - |
+              cp /source/{{ .Values.database.driver.fileName }} /dest/
+          volumeMounts:
+            - mountPath: /source/{{ .Values.database.driver.fileName }}
+              name: dbdriver-source
+              subPath: {{ .Values.database.driver.fileName }}
+              readOnly: true
+            - mountPath: /dest
+              name: dbdriver
         - name: take-ownership
           image: {{ .Values.global.busybox.repository }}
           command:
@@ -35,7 +52,7 @@ spec:
               name: data
               subPath: {{ .Values.persistence.database.path }}
             {{- end }}
-            - mountPath: /data/conf
+            - mountPath: /persistent_conf
               name: data
               subPath: {{ .Values.persistence.config.path }}
             {{- if eq .Values.persistence.flow.provider "file" }}
@@ -135,7 +152,7 @@ spec:
             {{- if .Values.database.external }}
               {{- /* MySQL or Postgres database driver */}}
             - mountPath: {{ $databaseDriverPath }}/{{ .Values.database.driver.fileName }}
-              name: database-driver
+              name: dbdriver
               subPath: {{ .Values.database.driver.fileName }}
               readOnly: true
             {{- else }}
@@ -144,7 +161,7 @@ spec:
               name: data
               subPath: {{ .Values.persistence.database.path }}
             {{- end }}
-            - mountPath: {{ $nifiRegistryHome }}/data/conf
+            - mountPath: {{ $nifiRegistryHome }}/persistent_conf
               name: data
               subPath: {{ .Values.persistence.config.path }}
             {{- if eq .Values.persistence.flow.provider "file" }}
@@ -187,9 +204,11 @@ spec:
             name: {{ include "nifi-registry.fullname" . }}
             defaultMode: 0500
         {{- with .Values.database.driver.volumeSpec }}
-        - name: database-driver
+        - name: dbdriver-source
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        - name: dbdriver
+          emptyDir: { }
         - name: data
           {{- if .Values.persistence.volumeSpec }}
           {{- toYaml .Values.persistence.volumeSpec | nindent 10 }}
