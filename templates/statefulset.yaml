@@ -25,8 +25,8 @@ spec:
             - -c
             - |
               chown 1000:1000 data/*
-              {{- range .Values.extraVolumeMounts }}
-              chown 1000:1000 {{ .mountPath | quote }}
+              {{- range .Values.extraTakeOwnershipPaths }}
+              chown 1000:1000 {{ . | quote }}
               {{- end }}
           securityContext:
             runAsUser: 0

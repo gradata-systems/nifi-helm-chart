@@ -140,6 +140,11 @@ extraVolumeMounts: [ ]
 #  - mountPath: /data/vol-1
 #    name: my-volume
 
+# Additional directories to take ownership of (chown) during startup. Useful where `extraVolumeMounts` are provided.
+# Chown is applied to the specified directory only (shallow), not recursively.
+extraTakeOwnershipPaths: [ ]
+#  - /data/vol-1
+
 ingress:
   enabled: true
   ingressClassName: nginx
