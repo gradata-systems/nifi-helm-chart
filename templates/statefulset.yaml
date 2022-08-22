@@ -17,6 +17,7 @@ spec:
       labels:
         {{- include "nifi.selectorLabels" . | nindent 8 }}
     spec:
+      terminationGracePeriodSeconds: {{ .Values.shutdown.podTerminationGracePeriodSeconds }}
       initContainers:
         - name: take-ownership
           image: {{ .Values.global.busybox.repository }}

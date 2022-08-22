@@ -117,6 +117,9 @@ data:
       -deststoretype pkcs12
     {{- end }}
 
+    {{- /* Task termination period */}}
+    prop_replace 'graceful.shutdown.seconds' {{ .Values.shutdown.gracefulShutdownSeconds }} "${bootstrap_file}"
+
     {{- /* Set UI autorefresh interval */}}
     prop_replace 'nifi.ui.autorefresh.interval' {{ .Values.ui.refreshInterval | squote }}
 
