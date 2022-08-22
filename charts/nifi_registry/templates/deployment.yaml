@@ -181,19 +181,19 @@ spec:
               path: /nifi-registry
               port: https
               scheme: HTTPS
-            initialDelaySeconds: 10
-            timeoutSeconds: 3
-            periodSeconds: 3
-            failureThreshold: 30
+            {{- toYaml .Values.probeTimings.startup | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /nifi-registry
+              port: https
+              scheme: HTTPS
+            {{- toYaml .Values.probeTimings.readiness | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /nifi-registry
               port: https
               scheme: HTTPS
-            initialDelaySeconds: 30
-            timeoutSeconds: 3
-            periodSeconds: 10
-            failureThreshold: 3
+            {{- toYaml .Values.probeTimings.liveness | nindent 12 }}
       volumes:
         - name: certs
           secret:
