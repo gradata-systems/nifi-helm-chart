@@ -44,4 +44,4 @@ jobs:
       - name: Helm chart package and push
         run: |
           tar_path=$(helm package . | sed -E 's/^.+ saved it to: (.+)$/\1/')
-          helm push "$tar_path" oci://${{ env.REGISTRY }}/gradata-systems/helm-charts
+          helm push "$tar_path" oci://${{ env.REGISTRY }}/gradata-systems/${{ github.repository }}
