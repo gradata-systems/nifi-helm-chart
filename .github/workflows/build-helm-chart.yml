@@ -1,0 +1,45 @@
+# Builds the Helm chart and pushes to ghcr.io
+name: build-helm-chart
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "master" branch
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      packages: write
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Install Helm
+        uses: azure/setup-helm@v3.3
+      
+      - name: Helm repo login
+        run: |
+          helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Helm chart package and push
+        run: |
+          tar_path=$(helm package . | sed -E 's/^.+ saved it to: (.+)$/\1/')
+          helm push "$tar_path" oci://${{ env.REGISTRY }}/gradata-systems/helm-charts
