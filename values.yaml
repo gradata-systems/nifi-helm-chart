@@ -96,6 +96,12 @@ ports:
   loadbalance: 6342
   metrics: 9092
 
+service:
+  external:
+    annotations: { }
+    type: LoadBalancer # NodePort | LoadBalancer
+    externalTrafficPolicy: Cluster # Cluster | Local
+
 cluster:
   enabled: true
   traffic:
@@ -117,14 +123,15 @@ metrics:
     interval: 10s
 
 # Additional ports and Ingress rules to configure for each node
-extraPorts:
-  datafeed:
-    containerPort: 9443
-    protocol: TCP
-    nodePort: "" # Set if NodePort is required
-    ingress:
-      path: /datafeed # Omit if ingress is not required
-      pathType: Exact
+extraPorts: { }
+#  datafeed:
+#    containerPort: 9443
+#    protocol: TCP
+#    nodePort: 30443 # Set if NodePort is required
+#    loadBalancerPort: 9443
+#    ingress: # Omit if ingress is not required
+#      path: /datafeed
+#      pathType: Exact
 
 # Extra config properties to set at runtime
 extraConfig:
