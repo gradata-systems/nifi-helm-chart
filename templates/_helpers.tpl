@@ -76,16 +76,19 @@ Certificate path constants
 {{- end }}
 
 {{/*
-Returns whether `.Values.extraPorts` contains one or more `nodePort` entries
+Returns whether `.Values.extraPorts` contains one or more entries with either `nodePort` or `loadBalancerPort`
 */}}
-{{- define "nifi.hasNodePorts" -}}
+{{- define "nifi.hasExternalPorts" -}}
 {{- $hasNodePorts := false }}
+{{- $hasLoadBalancerPorts := false }}
 {{- range $name, $port := .Values.extraPorts }}
 {{- if and (hasKey $port "nodePort") (gt (int $port.nodePort) 0) }}
 {{- $hasNodePorts = true }}
+{{- else if and (hasKey $port "loadBalancerPort") (gt (int $port.loadBalancerPort) 0) }}
+{{- $hasLoadBalancerPorts = true }}
 {{- end }}
 {{- end }}
-{{- $hasNodePorts }}
+{{- if (or $hasNodePorts $hasLoadBalancerPorts) }}true{{ end }}
 {{- end }}
 
 {{/*
