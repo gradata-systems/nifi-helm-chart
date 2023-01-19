@@ -52,7 +52,9 @@ metadata:
   labels:
     {{- include "nifi.labels" . | nindent 4 }}
   annotations:
+    {{- if .Values.metrics.ingress.https }}
     nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    {{- end }}
     nginx.ingress.kubernetes.io/rewrite-target: /metrics/
     {{- if .Values.metrics.ingress.requireClientCertificate }}
     nginx.ingress.kubernetes.io/auth-tls-secret: {{ .Release.Namespace }}/{{ include "nifi.fullname" . }}-tls
