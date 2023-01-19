@@ -115,6 +115,7 @@ metrics:
   # Expose metrics for each node via Ingress
   ingress:
     enabled: false
+    https: false
     basePath: /metrics # Metrics are available externally via Ingress for each pod at: /metrics/<pod name>
     requireClientCertificate: false
 
