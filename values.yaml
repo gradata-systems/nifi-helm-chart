@@ -84,6 +84,7 @@ persistence:
       archive: archive
   repo:
     path: repo
+    takeOwnershipOnStartup: true
     dirs:
       flowfile: flowfile
       content: content

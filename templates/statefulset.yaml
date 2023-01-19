@@ -25,7 +25,9 @@ spec:
             - sh
             - -c
             - |
+              {{- if .Values.persistence.repo.takeOwnershipOnStartup }}
               chown 1000:1000 data/*
+              {{- end }}
               {{- range .Values.extraTakeOwnershipPaths }}
               chown 1000:1000 {{ . | quote }}
               {{- end }}
