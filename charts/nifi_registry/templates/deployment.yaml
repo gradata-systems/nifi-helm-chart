@@ -42,7 +42,7 @@ spec:
             - sh
             - -c
             - |
-              chown 1000:1000 data/*
+              chown {{ .Values.securityContext.runAsUser}}:{{ .Values.securityContext.runAsGroup }} data/*
           securityContext:
             runAsUser: 0
             runAsNonRoot: false
@@ -216,10 +216,7 @@ spec:
           emptyDir: { }
           {{- end }}
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
+        {{- toYaml .Values.securityContext | nindent 8 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
