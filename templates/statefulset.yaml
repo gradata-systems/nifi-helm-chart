@@ -132,6 +132,9 @@ spec:
               name: data
               subPath: conf
             {{- end }}
+            - mountPath: {{ $nifiHome }}/logs
+              name: data
+              subPath: logs
             {{- with .Values.persistence.repo }}
             - mountPath: {{ $nifiHome }}/flowfile_repository
               name: data
@@ -168,6 +171,57 @@ spec:
               scheme: HTTPS
             {{- toYaml .Values.probeTimings.liveness | nindent 12 }}
           {{- end }}
+        {{- with .Values.filebeat }}
+        {{- if .enabled }}
+        - name: filebeat
+          image: {{ .image.repository }}:{{ .image.tag | default "latest" }}
+          args:
+            - -e
+            - -E
+            - http.enabled=true
+          volumeMounts:
+            - mountPath: /usr/share/filebeat/filebeat.yml
+              subPath: filebeat.yml
+              name: filebeat-config
+              readOnly: true
+            - mountPath: /usr/share/filebeat/data
+              name: data
+              subPath: filebeat
+            - mountPath: /nifi/logs
+              name: data
+              subPath: logs
+          {{- with .securityContext }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  #!/usr/bin/env bash -e
+                  filebeat test input
+            {{- toYaml $.Values.probeTimings.startup | nindent 12 }}
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  #!/usr/bin/env bash -e
+                  filebeat test output
+            {{- toYaml $.Values.probeTimings.readiness | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - |
+                  #!/usr/bin/env bash -e
+                  curl --fail 127.0.0.1:5066
+            {{- toYaml $.Values.probeTimings.liveness | nindent 12 }}
+        {{- end }}
+        {{- end }}
       volumes:
         - name: certs
           csi:
@@ -202,6 +256,13 @@ spec:
           secret:
             secretName: {{ .name }}
             defaultMode: 0400
+        {{- end }}
+        {{- end }}
+        {{- with .Values.filebeat }}
+        {{- if .enabled }}
+        - name: filebeat-config
+          configMap:
+            name: {{ include "nifi.fullname" $ }}-filebeat
         {{- end }}
         {{- end }}
       securityContext:

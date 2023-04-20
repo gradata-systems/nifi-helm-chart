@@ -10,6 +10,7 @@
       </HelmParameters>
       <HelmParameters>
         <option name="chartPath" value="$PROJECT_DIR$" />
+        <option name="showConfigDialog" value="false" />
         <option name="valuesFiles">
           <option value="values.yaml" />
         </option>
