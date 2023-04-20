@@ -134,7 +134,6 @@ filebeat:
     requests:
       cpu: 100m
       memory: 128Mi
-  securityContext: { }
   tags:
     - nifi
   output:
@@ -142,6 +141,10 @@ filebeat:
     parameters: { }
 #      hosts: ["kafka-1:9092"]
 #      topic: nifi
+  securityContext: { }
+  volumeMounts: [ ]
+#    - mountPath: /opt/secrets
+#      name: secret
 
 # Additional ports and Ingress rules to configure for each node
 extraPorts: { }

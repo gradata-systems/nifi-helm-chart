@@ -190,6 +190,9 @@ spec:
             - mountPath: /nifi/logs
               name: data
               subPath: logs
+          {{- with .volumeMounts }}
+          {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- with .securityContext }}
           {{- toYaml . | nindent 10 }}
           {{- end }}
