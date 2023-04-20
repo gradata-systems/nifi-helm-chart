@@ -145,3 +145,27 @@ data:
     {{- end }}
 
     exec $scripts_dir/start.sh
+{{- with .Values.filebeat }}
+{{- if .enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nifi.fullname" $ }}-filebeat
+  labels:
+    {{- include "nifi.labels" $ | nindent 4 }}
+data:
+  filebeat.yml: |
+    tags:
+      {{- toYaml .tags | nindent 6 }}
+    filebeat.inputs:
+      - type: filestream
+        id: nifi
+        paths:
+          - "/nifi/logs/nifi-app.log"
+          - "/nifi/logs/nifi-request.log"
+          - "/nifi/logs/nifi-user.log"
+    {{ printf "output.%s:" .output.type }}
+    {{- toYaml .output.parameters | nindent 6 }}
+{{- end }}
+{{- end }}

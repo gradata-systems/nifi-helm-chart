@@ -124,6 +124,25 @@ metrics:
     enabled: false
     interval: 10s
 
+# Optionally deploy a filebeat sidecar to ship NiFi logs to a receiver
+filebeat:
+  enabled: true
+  image:
+    repository: docker.elastic.co/beats/filebeat
+    tag: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  securityContext: { }
+  tags:
+    - nifi
+  output:
+    type: "" # kafka
+    parameters: { }
+#      hosts: ["kafka-1:9092"]
+#      topic: nifi
+
 # Additional ports and Ingress rules to configure for each node
 extraPorts: { }
 #  datafeed:
