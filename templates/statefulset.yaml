@@ -39,6 +39,7 @@ spec:
               name: data
               subPath: conf
             {{- with .Values.persistence.repo }}
+            {{- if .takeOwnershipOnStartup }}
             - mountPath: /data/flowfile_repository
               name: data
               subPath: {{ printf "%s/%s" .path .dirs.flowfile }}
@@ -48,6 +49,7 @@ spec:
             - mountPath: /data/provenance_repository
               name: data
               subPath: {{ printf "%s/%s" .path .dirs.provenance }}
+            {{- end }}
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
