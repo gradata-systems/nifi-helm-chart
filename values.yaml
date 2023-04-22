@@ -126,7 +126,7 @@ metrics:
 
 # Optionally deploy a filebeat sidecar to ship NiFi logs to a receiver
 filebeat:
-  enabled: false
+  enabled: true
   image:
     repository: docker.elastic.co/beats/filebeat
     tag: ""
@@ -136,6 +136,8 @@ filebeat:
       memory: 128Mi
   tags:
     - nifi
+  labels: { }
+#    instance: production
   output:
     type: "" # kafka
     parameters: { }
