@@ -163,17 +163,17 @@ data:
         id: nifi-app
         fields:
           log_id: app
-        paths: ["/nifi/logs/nifi-app.log"]
+        paths: ["/nifi/logs/nifi-app*.log"]
       - type: filestream
         id: nifi-request
         fields:
           log_id: request
-        paths: ["/nifi/logs/nifi-request.log"]
+        paths: ["/nifi/logs/nifi-request*.log"]
       - type: filestream
         id: nifi-user
         fields:
           log_id: user
-        paths: ["/nifi/logs/nifi-user.log"]
+        paths: ["/nifi/logs/nifi-user*.log"]
     {{- with .labels }}
     processors:
       - add_labels:

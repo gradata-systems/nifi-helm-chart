@@ -40,6 +40,9 @@ spec:
               subPath: conf
             {{- with .Values.persistence.repo }}
             {{- if .takeOwnershipOnStartup }}
+            - mountPath: /data/logs
+              name: data
+              subPath: logs
             - mountPath: /data/flowfile_repository
               name: data
               subPath: {{ printf "%s/%s" .path .dirs.flowfile }}
