@@ -174,13 +174,18 @@ data:
         fields:
           log_id: user
         paths: ["/nifi/logs/nifi-user*.log"]
-    {{- with .labels }}
+    {{- if or .labels .processors }}
     processors:
+      {{- if .labels }}
       - add_labels:
           labels:
-            {{- toYaml . | nindent 12 }}
+            {{- toYaml .labels | nindent 12 }}
+      {{- end }}
+      {{- toYaml .processors | nindent 6 }}
     {{- end }}
     {{ printf "output.%s:" .output.type }}
     {{- toYaml .output.parameters | nindent 6 }}
+    queue.mem:
+      flush.timeout: {{ .queue.flushTimeout }}
 {{- end }}
 {{- end }}
