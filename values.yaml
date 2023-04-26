@@ -59,6 +59,11 @@ ui:
   timeZone: "" # IANA timezone identifier. Time is displayed using this timezone in the UI.
   maxThreads: "" # Maximum number of Jetty threads to use for UI and HTTP site-to-site connections
 
+tls:
+  # Additional subject alternative names included in the certificate issued to cluster nodes
+  subjectAltNames: [ ]
+#    - nifi.internal
+
 encryption:
   # Used to encrypt all repositories
   repository:

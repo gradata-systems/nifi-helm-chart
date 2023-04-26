@@ -76,6 +76,16 @@ Certificate path constants
 {{- end }}
 
 {{/*
+Certificate subject alternative names
+*/}}
+{{- define "nifi.certificateSubjectAltNames" }}
+{{- printf "${POD_NAME}.%s.%s,%s-http.%s" (include "nifi.fullname" . ) .Release.Namespace (include "nifi.fullname" . ) .Release.Namespace }}
+{{- with .Values.tls.subjectAltNames }}
+{{- printf ",%s" (join "," .) }}
+{{- end }}
+{{- end }}
+
+{{/*
 Returns whether `.Values.extraPorts` contains one or more entries with either `nodePort` or `loadBalancerPort`
 */}}
 {{- define "nifi.hasExternalPorts" -}}
