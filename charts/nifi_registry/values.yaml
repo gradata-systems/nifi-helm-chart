@@ -40,6 +40,7 @@ persistence:
   config:
     path: conf
     files:
+      authorizations: authorizations.xml
       users: users.xml
   database:
     path: db
