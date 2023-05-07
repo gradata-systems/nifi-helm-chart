@@ -35,23 +35,18 @@ spec:
             runAsUser: 0
             runAsNonRoot: false
           volumeMounts:
+            {{- with .Values.persistence.config.volumeMount }}
             - mountPath: /data/persistent_conf
-              name: data
-              subPath: conf
-            {{- with .Values.persistence.repo }}
-            {{- if .takeOwnershipOnStartup }}
-            - mountPath: /data/logs
-              name: data
-              subPath: logs
-            - mountPath: /data/flowfile_repository
-              name: data
-              subPath: {{ printf "%s/%s" .path .dirs.flowfile }}
-            - mountPath: /data/content_repository
-              name: data
-              subPath: {{ printf "%s/%s" .path .dirs.content }}
-            - mountPath: /data/provenance_repository
-              name: data
-              subPath: {{ printf "%s/%s" .path .dirs.provenance }}
+              name: {{ .name }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+            {{- end }}
+            {{- if .Values.persistence.repo.takeOwnershipOnStartup }}
+            {{- range .Values.persistence.repo.dirs }}
+            - mountPath: {{ printf "/data/%s" .name }}
+              name: {{ .volumeName }}
+              subPath: {{ .subPath }}
             {{- end }}
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
@@ -132,24 +127,19 @@ spec:
               name: config
               subPath: custom-startup.sh
               readOnly: true
-            {{- with .Values.persistence.config }}
+            {{- with .Values.persistence.config.volumeMount }}
             - mountPath: {{ $nifiHome }}/persistent_conf
-              name: data
-              subPath: conf
+              name: {{ .name }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
             {{- end }}
             - mountPath: {{ $nifiHome }}/logs
-              name: data
-              subPath: logs
-            {{- with .Values.persistence.repo }}
-            - mountPath: {{ $nifiHome }}/flowfile_repository
-              name: data
-              subPath: {{ printf "%s/%s" .path .dirs.flowfile }}
-            - mountPath: {{ $nifiHome }}/content_repository
-              name: data
-              subPath: {{ printf "%s/%s" .path .dirs.content }}
-            - mountPath: {{ $nifiHome }}/provenance_repository
-              name: data
-              subPath: {{ printf "%s/%s" .path .dirs.provenance }}
+              name: logs
+            {{- range .Values.persistence.repo.dirs }}
+            - mountPath: {{ printf "%s/%s" $nifiHome .name }}
+              name: {{ .volumeName }}
+              subPath: {{ .subPath }}
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
@@ -189,12 +179,8 @@ spec:
               subPath: filebeat.yml
               name: filebeat-config
               readOnly: true
-            - mountPath: /usr/share/filebeat/data
-              name: data
-              subPath: filebeat
             - mountPath: /nifi/logs
-              name: data
-              subPath: logs
+              name: logs
           {{- with .volumeMounts }}
           {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -255,6 +241,8 @@ spec:
               - key: custom-startup.sh
                 path: custom-startup.sh
                 mode: 0744
+        - name: logs
+          emptyDir: { }
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

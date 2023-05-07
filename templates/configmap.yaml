@@ -94,7 +94,7 @@ data:
     {{- with .Values.persistence }}
     conf_dir='./persistent_conf'
     prop_replace 'nifi.flow.configuration.json.file' "${conf_dir}/{{ .config.files.flowJson }}"
-    prop_replace 'nifi.flow.configuration.archive.dir' "${conf_dir}/{{ .config.dirs.archive }}"
+    prop_replace 'nifi.flow.configuration.archive.dir' "${conf_dir}/archive"
 
     sed -i -E "s|(<property name=\"Authorizations File\">).*(</property>)|\1${conf_dir}/{{ .config.files.authorizations }}\2|g" "${authorizers_file}"
     sed -i -E "s|(<property name=\"Users File\">).*(</property>)|\1${conf_dir}/{{ .config.files.users }}\2|g" "${authorizers_file}"
