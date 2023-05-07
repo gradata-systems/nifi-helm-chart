@@ -80,20 +80,28 @@ logging:
 
 persistence:
   config:
-    path: conf
     files:
       authorizations: authorizations.xml
       users: users.xml
       flowJson: flow.json.gz
-    dirs:
-      archive: archive
+    volumeMount:
+      name: data # Name of the volume mount to use
+      subPath: conf # Volume mount subPath
   repo:
-    path: repo
     takeOwnershipOnStartup: true
+
+    # By default, repositories are mapped to a single PVC.
+    # If multiple PVCs are desired (for instance, having separate content and provenance repos), override this section.
     dirs:
-      flowfile: flowfile
-      content: content
-      provenance: provenance
+      - name: flowfile_repository # Directory within the container (i.e. /opt/nifi/nifi-current/flowfile_repository)
+        volumeName: data # Name of the volume to mount
+        subPath: flowfile # Subpath within the mounted volume
+      - name: content_repository
+        volumeName: data
+        subPath: content
+      - name: provenance_repository
+        volumeName: data
+        subPath: provenance
 
 ports:
   https: 8443
@@ -220,8 +228,8 @@ securityContext:
   runAsGroup: 1000
   runAsNonRoot: true
 
-volumeClaims:
-  data: { }
+volumeClaims: { }
+#  data:
 #    storageClassName: ""
 #    selector:
 #      matchLabels: { }
