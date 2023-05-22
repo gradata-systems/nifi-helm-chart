@@ -22,6 +22,7 @@ spec:
         {{- include "nifi-registry.selectorLabels" . | nindent 8 }}
     spec:
       initContainers:
+        {{- if .Values.database.external }}
         - name: copy-mysql-driver
           image: {{ .Values.global.busybox.repository }}
           command:
@@ -36,6 +37,7 @@ spec:
               readOnly: true
             - mountPath: /dest
               name: dbdriver
+        {{- end }}
         - name: take-ownership
           image: {{ .Values.global.busybox.repository }}
           command:
