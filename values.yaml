@@ -9,6 +9,9 @@ global:
   nifi:
     nodeCount: 1
 
+  openshift: {} # Delete {} and uncomment nested keys to enable OpenShift resource generation
+#    version: "" # e.g. "4.12"
+
   encryption:
     sensitivePropertiesKey:
       secretRef:
