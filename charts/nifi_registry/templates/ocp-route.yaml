@@ -1,0 +1,20 @@
+{{- if .Values.global.openshift.version }}
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: {{ include "nifi-registry.fullname" . }}
+  labels:
+    {{- include "nifi-registry.labels" . | nindent 4 }}
+spec:
+  host: {{ .Values.ingress.hostName }}
+  to:
+    kind: Service
+    name: {{ include "nifi-registry.fullname" . }}
+    weight: 100
+  port:
+    targetPort: https
+  tls:
+    termination: passthrough
+    insecureEdgeTerminationPolicy: None
+  wildcardPolicy: None
+{{- end }}

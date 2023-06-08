@@ -21,6 +21,7 @@ spec:
       labels:
         {{- include "nifi-registry.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if (not .Values.global.openshift.version) }}
       initContainers:
         {{- if .Values.database.external }}
         - name: copy-mysql-driver
@@ -67,6 +68,7 @@ spec:
               name: data
               subPath: {{ .Values.persistence.bundle.fileProvider.path }}
             {{- end }}
+      {{- end }}
       containers:
         - name: {{ include "nifi-registry.name" . }}
           image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
@@ -219,6 +221,9 @@ spec:
           {{- end }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
+      {{- if .Values.global.openshift }}
+      serviceAccountName: nifi
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

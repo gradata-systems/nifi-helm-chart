@@ -1,3 +1,4 @@
+{{- if not .Values.global.openshift.version }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -27,3 +28,4 @@ spec:
                 name: {{ include "nifi-registry.fullname" . }}
                 port:
                   name: https
+{{- end }}
