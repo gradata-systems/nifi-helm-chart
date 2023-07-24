@@ -39,7 +39,7 @@ data:
       {{ $serviceHostName }}:{{ .Values.ports.https }}"
 
     {{- /* S2S cluster-local connections */}}
-    export NIFI_REMOTE_INPUT_HOST="${host_name}"
+    export NIFI_REMOTE_INPUT_HOST="${HOSTNAME}"
     prop_add 'nifi.remote.route.raw.cluster.when' '${s2s.source.hostname:equals('\''{{ $serviceHostName }}'\'')}'
     prop_add 'nifi.remote.route.raw.cluster.hostname' '${s2s.target.hostname}'
     prop_add 'nifi.remote.route.raw.cluster.port' {{ .Values.ports.remoteinput | squote }}
@@ -47,7 +47,7 @@ data:
 
     {{- /* S2S connections via Ingress */}}
     prop_add 'nifi.remote.route.http.ingress.when' '${X-ProxyHost:equals('\''{{ include "nifi.siteToSiteHostName" . }}'\'')}'
-    prop_add 'nifi.remote.route.http.ingress.hostname' '${s2s.target.hostname:substringBefore('\''.'\'')}.{{ include "nifi.siteToSiteHostName" . }}'
+    prop_add 'nifi.remote.route.http.ingress.hostname' '${s2s.target.hostname}.{{ include "nifi.siteToSiteHostName" . }}'
     prop_add 'nifi.remote.route.http.ingress.port' '443'
     prop_add 'nifi.remote.route.http.ingress.secure' 'true'
 
