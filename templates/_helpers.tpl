@@ -79,7 +79,9 @@ Certificate path constants
 Certificate subject alternative names
 */}}
 {{- define "nifi.certificateSubjectAltNames" }}
-{{- printf "${POD_NAME}.%s.%s,%s-http.%s" (include "nifi.fullname" . ) .Release.Namespace (include "nifi.fullname" . ) .Release.Namespace }}
+{{- $fullName := (include "nifi.fullname" . ) }}
+{{- $namespace := .Release.Namespace }}
+{{- printf "${POD_NAME}.%s.%s,%s-http.%s,%s" $fullName $namespace $fullName $namespace }}
 {{- with .Values.tls.subjectAltNames }}
 {{- printf ",%s" (join "," .) }}
 {{- end }}
