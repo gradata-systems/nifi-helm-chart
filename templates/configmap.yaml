@@ -46,7 +46,7 @@ data:
     prop_add 'nifi.remote.route.raw.cluster.secure' 'true'
 
     {{- /* S2S connections via Ingress */}}
-    prop_add 'nifi.remote.route.http.ingress.when' '${X-ProxyHost:equals('\''{{ include "nifi.siteToSiteHostName" . }}'\'')}'
+    prop_add 'nifi.remote.route.http.ingress.when' '${X-ProxyHost:contains('\''{{ include "nifi.siteToSiteHostName" . }}'\'')}'
     prop_add 'nifi.remote.route.http.ingress.hostname' '${s2s.target.hostname}.{{ include "nifi.siteToSiteHostName" . }}'
     prop_add 'nifi.remote.route.http.ingress.port' '443'
     prop_add 'nifi.remote.route.http.ingress.secure' 'true'
