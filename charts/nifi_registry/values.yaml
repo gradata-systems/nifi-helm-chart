@@ -69,11 +69,11 @@ ingress:
 
 resources:
   requests:
-    cpu: 100m
+    cpu: 500m
     memory: 512Mi
   limits:
-    cpu: 500m
-    memory: 1Gi
+    cpu: "4"
+    memory: 2Gi
 
 securityContext:
   runAsUser: 1000
@@ -83,7 +83,7 @@ securityContext:
 
 probeTimings:
   startup:
-    initialDelaySeconds: 15
+    initialDelaySeconds: 10
     timeoutSeconds: 1
     periodSeconds: 5
     failureThreshold: 10
