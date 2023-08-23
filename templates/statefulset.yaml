@@ -51,14 +51,14 @@ spec:
               {{- end }}
             {{- end }}
             {{- range .Values.persistence.repo.content }}
-            - mountPath: {{ printf "/data/%s" .name }}
+            - mountPath: {{ printf "/data/%s" .mountDir }}
               name: {{ .volumeName }}
               {{- if .subPath }}
               subPath: {{ .subPath }}
               {{- end }}
             {{- end }}
             {{- range .Values.persistence.repo.provenance }}
-            - mountPath: {{ printf "/data/%s" .name }}
+            - mountPath: {{ printf "/data/%s" .mountDir }}
               name: {{ .volumeName }}
               {{- if .subPath }}
               subPath: {{ .subPath }}
