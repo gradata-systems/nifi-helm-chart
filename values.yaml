@@ -91,15 +91,19 @@ persistence:
     takeOwnershipOnStartup: true
 
     # By default, repositories are mapped to a single PVC.
-    # If multiple PVCs are desired (for instance, having separate content and provenance repos), override this section.
-    dirs:
-      - name: flowfile_repository # Directory within the container (i.e. /opt/nifi/nifi-current/flowfile_repository)
-        volumeName: data # Name of the volume to mount
-        subPath: flowfile # Subpath within the mounted volume
-      - name: content_repository
+    # If multiple PVCs are desired (for instance, having separate content and provenance repos), override the relevant section.
+    flowfile:
+      mountDir: flowfile_repository # Relative directory within the container (i.e. /opt/nifi/nifi-current/flowfile_repository)
+      volumeName: data # Name of the volume to mount
+      subPath: flowfile # Subpath within the mounted volume
+    content:
+      - name: default
+        mountDir: content_repository
         volumeName: data
         subPath: content
-      - name: provenance_repository
+    provenance:
+      - name: default
+        mountDir: provenance_repository
         volumeName: data
         subPath: provenance
 

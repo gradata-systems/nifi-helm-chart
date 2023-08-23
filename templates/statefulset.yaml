@@ -43,10 +43,26 @@ spec:
               {{- end }}
             {{- end }}
             {{- if .Values.persistence.repo.takeOwnershipOnStartup }}
-            {{- range .Values.persistence.repo.dirs }}
+            {{- with .Values.persistence.repo.flowfile }}
+            - mountPath: {{ printf "/data/%s" .mountDir }}
+              name: {{ .volumeName }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+            {{- end }}
+            {{- range .Values.persistence.repo.content }}
             - mountPath: {{ printf "/data/%s" .name }}
               name: {{ .volumeName }}
+              {{- if .subPath }}
               subPath: {{ .subPath }}
+              {{- end }}
+            {{- end }}
+            {{- range .Values.persistence.repo.provenance }}
+            - mountPath: {{ printf "/data/%s" .name }}
+              name: {{ .volumeName }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
             {{- end }}
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
@@ -136,10 +152,26 @@ spec:
             {{- end }}
             - mountPath: {{ $nifiHome }}/logs
               name: logs
-            {{- range .Values.persistence.repo.dirs }}
-            - mountPath: {{ printf "%s/%s" $nifiHome .name }}
+            {{- with .Values.persistence.repo.flowfile }}
+            - mountPath: {{ printf "%s/%s" $nifiHome .mountDir }}
               name: {{ .volumeName }}
+              {{- if .subPath }}
               subPath: {{ .subPath }}
+              {{- end }}
+            {{- end }}
+            {{- range .Values.persistence.repo.content }}
+            - mountPath: {{ printf "%s/%s" $nifiHome .mountDir }}
+              name: {{ .volumeName }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+            {{- end }}
+            {{- range .Values.persistence.repo.provenance }}
+            - mountPath: {{ printf "%s/%s" $nifiHome .mountDir }}
+              name: {{ .volumeName }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}

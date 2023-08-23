@@ -15,6 +15,12 @@ data:
       echo "$1=$2" >> "${target_file}"
     }
 
+    prop_remove () {
+      target_file="${3:-${nifi_props_file}}"
+      echo "removing property from target file ${target_file}"
+      sed -i -e "s|^$1=.*$||" "${target_file}"
+    }
+
     authorizers_file='conf/authorizers.xml'
     bootstrap_file='conf/bootstrap.conf'
     nifi_properties_file='conf/nifi.properties'
@@ -98,6 +104,23 @@ data:
 
     sed -i -E "s|(<property name=\"Authorizations File\">).*(</property>)|\1${conf_dir}/{{ .config.files.authorizations }}\2|g" "${authorizers_file}"
     sed -i -E "s|(<property name=\"Users File\">).*(</property>)|\1${conf_dir}/{{ .config.files.users }}\2|g" "${authorizers_file}"
+    {{- end }}
+
+    {{- /* Define flowfile repository */}}
+    {{- with .Values.persistence.repo.flowfile }}
+    prop_replace 'nifi.flowfile.repository.directory' {{ printf "./%s" .mountDir | squote }}
+    {{- end }}
+
+    {{- /* Define content repositories */}}
+    prop_remove 'nifi.content.repository.directory.default'
+    {{- range .Values.persistence.repo.content }}
+    prop_add 'nifi.content.repository.directory.{{ .name }}' {{ printf "./%s" .mountDir | squote }}
+    {{- end }}
+
+    {{- /* Define provenance repositories */}}
+    prop_remove 'nifi.provenance.repository.directory.default'
+    {{- range .Values.persistence.repo.provenance }}
+    prop_add 'nifi.provenance.repository.directory.{{ .name }}' {{ printf "./%s" .mountDir | squote }}
     {{- end }}
 
     {{- /* Generate a TLS cert for this node from the CSI-provided certificates and private key */}}
