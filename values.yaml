@@ -87,6 +87,10 @@ persistence:
     volumeMount:
       name: data # Name of the volume mount to use
       subPath: conf # Volume mount subPath
+  state:
+    volumeMount:
+      name: data
+      subPath: state
   repo:
     takeOwnershipOnStartup: true
 
