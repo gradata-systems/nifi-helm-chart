@@ -42,6 +42,13 @@ spec:
               subPath: {{ .subPath }}
               {{- end }}
             {{- end }}
+            {{- with .Values.persistence.state.volumeMount }}
+            - mountPath: /data/state
+              name: {{ .name }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+            {{- end }}
             {{- if .Values.persistence.repo.takeOwnershipOnStartup }}
             {{- with .Values.persistence.repo.flowfile }}
             - mountPath: {{ printf "/data/%s" .mountDir }}
@@ -51,14 +58,14 @@ spec:
               {{- end }}
             {{- end }}
             {{- range .Values.persistence.repo.content }}
-            - mountPath: {{ printf "/data/%s" .name }}
+            - mountPath: {{ printf "/data/%s" .mountDir }}
               name: {{ .volumeName }}
               {{- if .subPath }}
               subPath: {{ .subPath }}
               {{- end }}
             {{- end }}
             {{- range .Values.persistence.repo.provenance }}
-            - mountPath: {{ printf "/data/%s" .name }}
+            - mountPath: {{ printf "/data/%s" .mountDir }}
               name: {{ .volumeName }}
               {{- if .subPath }}
               subPath: {{ .subPath }}
@@ -145,6 +152,13 @@ spec:
               readOnly: true
             {{- with .Values.persistence.config.volumeMount }}
             - mountPath: {{ $nifiHome }}/persistent_conf
+              name: {{ .name }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+            {{- end }}
+            {{- with .Values.persistence.state.volumeMount }}
+            - mountPath: {{ $nifiHome }}/state
               name: {{ .name }}
               {{- if .subPath }}
               subPath: {{ .subPath }}
