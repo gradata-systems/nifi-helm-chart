@@ -73,8 +73,8 @@ encryption:
       name: ""
       key: repository.p12 # File extension must be either .p12 or .bcfks
 
-# Override log verbosity settings in conf/logback.xml
 logging:
+  # Override log verbosity settings in conf/logback.xml
   levels: { }
 #    org.apache.nifi.web.security: DEBUG
 
@@ -91,6 +91,11 @@ persistence:
     volumeMount:
       name: data
       subPath: state
+  logs:
+    volumeMount:
+      # Specify a custom mount to persist log data in a separate volume (recommended)
+      name: ""
+      subPath: ""
   repo:
     takeOwnershipOnStartup: true
 
