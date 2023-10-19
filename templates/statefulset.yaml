@@ -49,6 +49,13 @@ spec:
               subPath: {{ .subPath }}
               {{- end }}
             {{- end }}
+            {{- with .Values.persistence.logs.volumeMount }}
+            - mountPath: /data/logs
+              name: {{ .name | default "logs" }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+            {{- end }}
             {{- if .Values.persistence.repo.takeOwnershipOnStartup }}
             {{- with .Values.persistence.repo.flowfile }}
             - mountPath: {{ printf "/data/%s" .mountDir }}
@@ -165,7 +172,12 @@ spec:
               {{- end }}
             {{- end }}
             - mountPath: {{ $nifiHome }}/logs
-              name: logs
+              {{- with .Values.persistence.logs.volumeMount }}
+              name: {{ .name | default "logs" }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+              {{- end }}
             {{- with .Values.persistence.repo.flowfile }}
             - mountPath: {{ printf "%s/%s" $nifiHome .mountDir }}
               name: {{ .volumeName }}
@@ -212,10 +224,9 @@ spec:
               scheme: HTTPS
             {{- toYaml .Values.probeTimings.liveness | nindent 12 }}
           {{- end }}
-        {{- with .Values.filebeat }}
-        {{- if .enabled }}
+        {{- if .Values.filebeat.enabled }}
         - name: filebeat
-          image: {{ .image.repository }}:{{ .image.tag | default "latest" }}
+          image: {{ .Values.filebeat.image.repository }}:{{ .Values.filebeat.image.tag | default "latest" }}
           args:
             - -e
             - -E
@@ -226,11 +237,16 @@ spec:
               name: filebeat-config
               readOnly: true
             - mountPath: /nifi/logs
-              name: logs
-          {{- with .volumeMounts }}
+              {{- with .Values.persistence.logs.volumeMount }}
+              name: {{ .name | default "logs" }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+              {{- end }}
+          {{- with .Values.filebeat.volumeMounts }}
           {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .securityContext }}
+          {{- with .Values.filebeat.securityContext }}
           {{- toYaml . | nindent 10 }}
           {{- end }}
           startupProbe:
@@ -241,7 +257,7 @@ spec:
                 - |
                   #!/usr/bin/env bash -e
                   filebeat test input
-            {{- toYaml $.Values.probeTimings.startup | nindent 12 }}
+            {{- toYaml .Values.probeTimings.startup | nindent 12 }}
           readinessProbe:
             exec:
               command:
@@ -250,7 +266,7 @@ spec:
                 - |
                   #!/usr/bin/env bash -e
                   filebeat test output
-            {{- toYaml $.Values.probeTimings.readiness | nindent 12 }}
+            {{- toYaml .Values.probeTimings.readiness | nindent 12 }}
           livenessProbe:
             exec:
               command:
@@ -259,8 +275,7 @@ spec:
                 - |
                   #!/usr/bin/env bash -e
                   curl --fail 127.0.0.1:5066
-            {{- toYaml $.Values.probeTimings.liveness | nindent 12 }}
-        {{- end }}
+            {{- toYaml .Values.probeTimings.liveness | nindent 12 }}
         {{- end }}
       volumes:
         - name: certs
@@ -287,8 +302,13 @@ spec:
               - key: custom-startup.sh
                 path: custom-startup.sh
                 mode: 0744
+        {{- with .Values.persistence.logs.volumeMount }}
+        {{- /* Use an emptyDir volume if no persistence is configured */}}
+        {{- if not .name }}
         - name: logs
           emptyDir: { }
+        {{- end }}
+        {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
