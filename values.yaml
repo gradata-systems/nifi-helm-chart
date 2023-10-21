@@ -241,6 +241,9 @@ securityContext:
   runAsGroup: 1000
   runAsNonRoot: true
 
+# Set a custom umask for the `nifi` user
+umask: "" # "0002"
+
 volumeClaims: { }
 #  data:
 #    storageClassName: ""

@@ -167,6 +167,10 @@ data:
     sleep 1000000
     {{- end }}
 
+    {{- with .Values.umask }}
+    umask {{ . }}
+    {{- end }}
+
     exec $scripts_dir/start.sh
 {{- with .Values.filebeat }}
 {{- if .enabled }}
