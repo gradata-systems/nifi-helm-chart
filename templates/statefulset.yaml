@@ -117,7 +117,7 @@ spec:
             {{- include "nifi.keystoreEnvironment" . | nindent 12 }}
             {{- include "nifi.ldapEnvironment" . | nindent 12 }}
             {{- with .Values.extraEnv }}
-            {{- toYaml . }}
+            {{ toYaml . | nindent 12 }}
             {{- end }}
           ports:
             {{- range $name, $number := .Values.ports }}
