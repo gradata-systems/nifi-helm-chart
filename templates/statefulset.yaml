@@ -247,7 +247,8 @@ spec:
           {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- with .Values.filebeat.securityContext }}
-          {{- toYaml . | nindent 10 }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           startupProbe:
             exec:
