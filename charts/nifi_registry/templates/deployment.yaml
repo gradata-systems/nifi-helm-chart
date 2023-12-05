@@ -221,6 +221,9 @@ spec:
           {{- end }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
+      {{- with .Values.global.serviceAccount }}
+      serviceAccountName: {{ .name | default (include "nifi.fullname" $) }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

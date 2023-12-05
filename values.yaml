@@ -9,6 +9,12 @@ global:
   nifi:
     nodeCount: 1
 
+  serviceAccount:
+    # Name of the existing service account to use. If not defined, one is created.
+    name: ""
+    # Annotations to add to the service account
+    annotations: { }
+
   encryption:
     sensitivePropertiesKey:
       secretRef:
