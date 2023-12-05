@@ -18,6 +18,7 @@ spec:
         {{- include "nifi.selectorLabels" . | nindent 8 }}
     spec:
       terminationGracePeriodSeconds: {{ .Values.shutdown.podTerminationGracePeriodSeconds }}
+      {{- if or .Values.persistence.takeOwnershipOnStartup .Values.extraTakeOwnershipPaths }}
       initContainers:
         - name: take-ownership
           image: {{ .Values.global.busybox.repository }}
@@ -25,7 +26,7 @@ spec:
             - sh
             - -c
             - |
-              {{- if .Values.persistence.repo.takeOwnershipOnStartup }}
+              {{- if .Values.persistence.takeOwnershipOnStartup }}
               chown {{ .Values.securityContext.runAsUser | int64 }}:{{ .Values.securityContext.runAsGroup | int64 }} data/*
               {{- end }}
               {{- range .Values.extraTakeOwnershipPaths }}
@@ -56,7 +57,7 @@ spec:
               subPath: {{ .subPath }}
               {{- end }}
             {{- end }}
-            {{- if .Values.persistence.repo.takeOwnershipOnStartup }}
+            {{- if .Values.persistence.takeOwnershipOnStartup }}
             {{- with .Values.persistence.repo.flowfile }}
             - mountPath: {{ printf "/data/%s" .mountDir }}
               name: {{ .volumeName }}

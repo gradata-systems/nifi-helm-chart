@@ -79,6 +79,7 @@ logging:
 #    org.apache.nifi.web.security: DEBUG
 
 persistence:
+  takeOwnershipOnStartup: true
   config:
     files:
       authorizations: authorizations.xml
@@ -97,8 +98,6 @@ persistence:
       name: ""
       subPath: ""
   repo:
-    takeOwnershipOnStartup: true
-
     # By default, repositories are mapped to a single PVC.
     # If multiple PVCs are desired (for instance, having separate content and provenance repos), override the relevant section.
     flowfile:

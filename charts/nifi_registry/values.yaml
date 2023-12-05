@@ -33,6 +33,7 @@ database:
       key: password
 
 persistence:
+  takeOwnershipOnStartup: true
   volumeSpec: { } # Required for storing config files and db/flows/bundles, depending on provider settings
   #    nfs:
   #      server: gs-fs01.internal
