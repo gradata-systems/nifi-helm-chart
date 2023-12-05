@@ -1,4 +1,4 @@
-{{- if not .Values.global.openshift.version }}
+{{- $serviceName := (printf "%s-http" (include "nifi.fullname" . )) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -26,7 +26,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "nifi.fullname" . }}-http
+                name: {{ $serviceName }}
                 port:
                   name: https
           {{- range $name, $port := .Values.extraPorts }}
@@ -38,7 +38,7 @@ spec:
                 {{- if $port.nodePort }}
                 name: {{ include "nifi.fullname" $ }}-nodeport
                 {{- else }}
-                name: {{ include "nifi.fullname" $ }}-http
+                name: {{ $serviceName }}
                 {{- end }}
                 port:
                   name: {{ $name }}
@@ -90,14 +90,18 @@ metadata:
   labels:
     {{- include "nifi.labels" . | nindent 4 }}
   annotations:
+    nginx.ingress.kubernetes.io/auth-tls-secret: {{ .Release.Namespace}}/{{ include "nifi.fullname" . }}-tls
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
     nginx.ingress.kubernetes.io/backend-protocol: HTTPS
     nginx.ingress.kubernetes.io/proxy-ssl-secret: {{ .Release.Namespace}}/{{ include "nifi.fullname" . }}-tls
-    nginx.ingress.kubernetes.io/proxy-ssl-verify: "true"
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "on"
+    nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+    nginx.ingress.kubernetes.io/proxy-ssl-name: {{ $serviceName }}.{{ .Release.Namespace }}
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_set_header X-ProxyScheme https;
       proxy_set_header X-ProxyHost $server_name;
       proxy_set_header X-ProxyPort 443;
-      proxy_set_header X-ProxiedEntitiesChain $ssl_client_s_dn;
+      proxy_set_header X-ProxiedEntitiesChain "<$ssl_client_s_dn>";
     {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -116,7 +120,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "nifi.fullname" . }}-http
+                name: {{ $serviceName }}
                 port:
                   name: https
     {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
@@ -131,4 +135,3 @@ spec:
                 port:
                   name: https
     {{- end }}
-{{- end }}

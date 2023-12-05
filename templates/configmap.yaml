@@ -15,6 +15,12 @@ data:
       echo "$1=$2" >> "${target_file}"
     }
 
+    prop_remove () {
+      target_file="${3:-${nifi_props_file}}"
+      echo "removing property from target file ${target_file}"
+      sed -i -e "s|^$1=.*$||" "${target_file}"
+    }
+
     authorizers_file='conf/authorizers.xml'
     bootstrap_file='conf/bootstrap.conf'
     nifi_properties_file='conf/nifi.properties'
@@ -39,15 +45,15 @@ data:
       {{ $serviceHostName }}:{{ .Values.ports.https }}"
 
     {{- /* S2S cluster-local connections */}}
-    export NIFI_REMOTE_INPUT_HOST="${host_name}"
+    export NIFI_REMOTE_INPUT_HOST="${HOSTNAME}"
     prop_add 'nifi.remote.route.raw.cluster.when' '${s2s.source.hostname:equals('\''{{ $serviceHostName }}'\'')}'
     prop_add 'nifi.remote.route.raw.cluster.hostname' '${s2s.target.hostname}'
     prop_add 'nifi.remote.route.raw.cluster.port' {{ .Values.ports.remoteinput | squote }}
     prop_add 'nifi.remote.route.raw.cluster.secure' 'true'
 
     {{- /* S2S connections via Ingress */}}
-    prop_add 'nifi.remote.route.http.ingress.when' '${X-ProxyHost:equals('\''{{ include "nifi.siteToSiteHostName" . }}'\'')}'
-    prop_add 'nifi.remote.route.http.ingress.hostname' '${s2s.target.hostname:substringBefore('\''.'\'')}.{{ include "nifi.siteToSiteHostName" . }}'
+    prop_add 'nifi.remote.route.http.ingress.when' '${X-ProxyHost:contains('\''{{ include "nifi.siteToSiteHostName" . }}'\'')}'
+    prop_add 'nifi.remote.route.http.ingress.hostname' '${s2s.target.hostname}.{{ include "nifi.siteToSiteHostName" . }}'
     prop_add 'nifi.remote.route.http.ingress.port' '443'
     prop_add 'nifi.remote.route.http.ingress.secure' 'true'
 
@@ -100,6 +106,23 @@ data:
     sed -i -E "s|(<property name=\"Users File\">).*(</property>)|\1${conf_dir}/{{ .config.files.users }}\2|g" "${authorizers_file}"
     {{- end }}
 
+    {{- /* Define flowfile repository */}}
+    {{- with .Values.persistence.repo.flowfile }}
+    prop_replace 'nifi.flowfile.repository.directory' {{ printf "./%s" .mountDir | squote }}
+    {{- end }}
+
+    {{- /* Define content repositories */}}
+    prop_remove 'nifi.content.repository.directory.default'
+    {{- range .Values.persistence.repo.content }}
+    prop_add 'nifi.content.repository.directory.{{ .name }}' {{ printf "./%s" .mountDir | squote }}
+    {{- end }}
+
+    {{- /* Define provenance repositories */}}
+    prop_remove 'nifi.provenance.repository.directory.default'
+    {{- range .Values.persistence.repo.provenance }}
+    prop_add 'nifi.provenance.repository.directory.{{ .name }}' {{ printf "./%s" .mountDir | squote }}
+    {{- end }}
+
     {{- /* Generate a TLS cert for this node from the CSI-provided certificates and private key */}}
     cert_dir='/opt/certmanager'
     tls_dir='/opt/tls'
@@ -142,6 +165,10 @@ data:
 
     {{- if .Values.debugStartup }}
     sleep 1000000
+    {{- end }}
+
+    {{- with .Values.umask }}
+    umask {{ . }}
     {{- end }}
 
     exec $scripts_dir/start.sh

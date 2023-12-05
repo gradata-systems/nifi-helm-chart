@@ -76,8 +76,8 @@ encryption:
       name: ""
       key: repository.p12 # File extension must be either .p12 or .bcfks
 
-# Override log verbosity settings in conf/logback.xml
 logging:
+  # Override log verbosity settings in conf/logback.xml
   levels: { }
 #    org.apache.nifi.web.security: DEBUG
 
@@ -90,19 +90,32 @@ persistence:
     volumeMount:
       name: data # Name of the volume mount to use
       subPath: conf # Volume mount subPath
+  state:
+    volumeMount:
+      name: data
+      subPath: state
+  logs:
+    volumeMount:
+      # Specify a custom mount to persist log data in a separate volume (recommended)
+      name: ""
+      subPath: ""
   repo:
     takeOwnershipOnStartup: true
 
     # By default, repositories are mapped to a single PVC.
-    # If multiple PVCs are desired (for instance, having separate content and provenance repos), override this section.
-    dirs:
-      - name: flowfile_repository # Directory within the container (i.e. /opt/nifi/nifi-current/flowfile_repository)
-        volumeName: data # Name of the volume to mount
-        subPath: flowfile # Subpath within the mounted volume
-      - name: content_repository
+    # If multiple PVCs are desired (for instance, having separate content and provenance repos), override the relevant section.
+    flowfile:
+      mountDir: flowfile_repository # Relative directory within the container (i.e. /opt/nifi/nifi-current/flowfile_repository)
+      volumeName: data # Name of the volume to mount
+      subPath: flowfile # Subpath within the mounted volume
+    content:
+      - name: default
+        mountDir: content_repository
         volumeName: data
         subPath: content
-      - name: provenance_repository
+    provenance:
+      - name: default
+        mountDir: provenance_repository
         volumeName: data
         subPath: provenance
 
@@ -230,6 +243,9 @@ securityContext:
   runAsUser: 1000
   runAsGroup: 1000
   runAsNonRoot: true
+
+# Set a custom umask for the `nifi` user
+umask: "" # "0002"
 
 volumeClaims: { }
 #  data:
