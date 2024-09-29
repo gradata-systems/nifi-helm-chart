@@ -42,6 +42,9 @@ This chart deploys both [NiFi](https://nifi.apache.org/docs/nifi-docs/) and [NiF
    10. `nifi_registry.database`
    11. `nifi_registry.persistentVolumeClaim` PVC to use for NiFi Registry [file system persistence provider](https://nifi.apache.org/docs/nifi-registry-docs/html/administration-guide.html#filesystemflowpersistenceprovider)
 2. `helm install -n nifi --create-namespace nifi -f values.yaml oci://ghcr.io/gradata-systems/helm-charts/nifi`
+3. Grant each NiFi node the following controller permissions. This is required in order for nodes to automatically disconnect and offload themselves prior to pod termination:
+   1. Access the controller (view)
+   2. Access the controller (modify)
 
 ## Upgrades
 
