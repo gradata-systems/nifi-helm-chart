@@ -172,8 +172,139 @@ data:
     {{- end }}
 
     exec $scripts_dir/start.sh
-{{- with .Values.filebeat }}
-{{- if .enabled }}
+  pre-stop.sh: |
+    #!/bin/bash
+
+    log_file='/opt/nifi/nifi-current/logs/k8s-pre-stop.log'
+    log_level_info='INFO'
+    log_level_warn='WARN'
+    log_level_error='ERROR'
+    host_name="${HOSTNAME}.{{ include "nifi.fullname" . }}.{{ .Release.Namespace }}"
+    default_node_uri="https://{{ $serviceHostName }}:{{ .Values.ports.https }}/nifi-api"
+    max_retries=3
+
+    function log() {
+      log_level=$1
+      log_msg=$2
+      shift 2
+
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$log_level] $log_msg" >> "$log_file"
+    }
+
+    function call_api() {
+      http_method=$1
+      request_url=$2
+      shift 2
+
+      http_response_pattern='^(.+?)\s*http_code=([0-9]+)$'
+      response=$(curl -X "$http_method" -s "$request_url" \
+        --cacert /opt/certmanager/ca.crt \
+        --cert /opt/certmanager/tls.crt \
+        --key /opt/certmanager/tls.key \
+        -H 'Content-Type: application/json' \
+        -H 'Accept: application/json' \
+        -w '\nhttp_code=%{http_code}' \
+        "$@")
+
+      if [[ "$response" =~ $http_response_pattern ]]; then
+        echo "${BASH_REMATCH[1]}"
+        http_response_code=${BASH_REMATCH[2]}
+        if [[ $http_response_code -ne 200 ]]; then
+          log $log_level_error "Request to $request_url failed. Response code: $http_response_code. Response: $response"
+          exit 1
+        fi
+      else
+        log $log_level_error "Invalid HTTP request to: $request_url. Response: $response"
+        exit 1
+      fi
+    }
+
+    function get_node_by_address() {
+      node_uri=$1
+      node_address=$2
+      shift 2
+
+      call_api GET "$node_uri/controller/cluster" | jq -c ".cluster.nodes[] | select(.address == \"$node_address\")"
+    }
+
+    function get_node_by_id() {
+      node_uri=$1
+      node_id=$2
+      shift 2
+
+      call_api GET "$node_uri/controller/cluster" | jq -c ".cluster.nodes[] | select(.nodeId == \"$node_id\")"
+    }
+
+    function get_connected_node_uri() {
+      node_address="$(call_api GET "$default_node_uri/controller/cluster" | jq -r "[.cluster.nodes[] | select((.status | startswith(\"CONNECTED\")) and .address != \"$host_name\")] | .[0].address")"
+      echo "https://$node_address:{{ .Values.ports.https }}/nifi-api"
+    }
+
+    function get_node_status() {
+      node_uri=$1
+      node_id=$2
+      shift 2
+
+      get_node_by_id "$node_uri" "$node_id" | jq -r '.status'
+    }
+
+    function set_node_status() {
+      node_uri=$1
+      node_id=$2
+      node_status=$3
+      shift 3
+
+      response=$(call_api PUT "$node_uri/controller/cluster/nodes/$node_id" -d "{ \"node\": { \"nodeId\": \"$node_id\", \"status\": \"$node_status\" } }")
+    }
+
+    function wait_for_node_status() {
+      node_uri=$1
+      node_id=$2
+      node_status=$3
+      shift 3
+
+      retry_count=0
+      while [ $retry_count -lt $max_retries ]
+      do
+        retry_count=$((retry_count+1))
+        log $log_level_info "Waiting for node $node_id to reach status $node_status..."
+        current_status=$(get_node_status "$node_uri" "$node_id")
+        if [[ "$node_status" == "$current_status" ]]; then
+          log $log_level_info "Node $node_id reached status $node_status"
+          return 0
+        else
+          sleep 3
+        fi
+      done
+    }
+
+    # Store the URI of the first connected node that's not the current node.
+    # Once the current node is disconnected, it won't be able to service API requests.
+    connected_node_uri="$(get_connected_node_uri)"
+
+    node="$(get_node_by_address "$default_node_uri" "$host_name")"
+    node_id="$(echo "$node" | jq -r '.nodeId')"
+    node_status="$(echo "$node" | jq -r '.status')"
+
+    if [[ ! "$node_status" == CONNECTED* ]]; then
+      log $log_level_info "Node $node_id is not connected. Proceeding to shut down."
+      exit 0
+    else
+      # Disconnect the node
+      log $log_level_info "Disconnecting node $node_id"
+      set_node_status "$connected_node_uri" "$node_id" 'DISCONNECTING'
+      sleep 1
+      wait_for_node_status "$connected_node_uri" "$node_id" 'DISCONNECTED'
+
+      # Offload the node
+      log $log_level_info "Offloading node $node_id"
+      set_node_status "$connected_node_uri" "$node_id" 'OFFLOADING'
+      wait_for_node_status "$connected_node_uri" "$node_id" 'OFFLOADED'
+      log $log_level_info "Node $node_id offload complete. Proceeding to shut down."
+    fi
+
+    {{- with .Values.filebeat }}
+    {{- if .enabled }}
 ---
 apiVersion: v1
 kind: ConfigMap

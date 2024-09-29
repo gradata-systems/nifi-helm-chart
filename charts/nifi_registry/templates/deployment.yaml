@@ -73,7 +73,7 @@ spec:
         - name: {{ include "nifi-registry.name" . }}
           image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: [ "../scripts/custom-startup.sh" ]
+          command: [ "../scripts/k8s/custom-startup.sh" ]
           env:
             - name: NIFI_REGISTRY_WEB_HTTPS_HOST
               value: 0.0.0.0
@@ -149,9 +149,8 @@ spec:
               name: certs
               subPath: truststore.p12
               readOnly: true
-            - mountPath: /opt/nifi-registry/scripts/custom-startup.sh
+            - mountPath: /opt/nifi-registry/scripts/k8s
               name: config
-              subPath: custom-startup.sh
               readOnly: true
             {{- if .Values.database.external }}
               {{- /* MySQL or Postgres database driver */}}
