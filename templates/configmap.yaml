@@ -211,11 +211,11 @@ data:
         http_response_code=${BASH_REMATCH[2]}
         if [[ $http_response_code -ne 200 ]]; then
           log $log_level_error "Request to $request_url failed. Response code: $http_response_code. Response: $response"
-          exit 1
+          return 1
         fi
       else
         log $log_level_error "Invalid HTTP request to: $request_url. Response: $response"
-        exit 1
+        return 1
       fi
     }
 
@@ -266,16 +266,18 @@ data:
       retry_count=0
       while [ $retry_count -lt $max_retries ]
       do
-        retry_count=$((retry_count+1))
         log $log_level_info "Waiting for node $node_id to reach status $node_status..."
         current_status=$(get_node_status "$node_uri" "$node_id")
-        if [[ "$node_status" == "$current_status" ]]; then
+        if [ $? -ne 0 ] || [ -z "$current_status" ]; then
+          # Query failed, so increment the retry counter
+          retry_count=$((retry_count+1))
+        elif [[ "$node_status" == "$current_status" ]]; then
           log $log_level_info "Node $node_id reached status $node_status"
           return 0
-        else
-          sleep 3
         fi
+        sleep 3
       done
+      return 1
     }
 
     # Store the URI of the first connected node that's not the current node.
@@ -287,20 +289,22 @@ data:
     node_status="$(echo "$node" | jq -r '.status')"
 
     if [[ ! "$node_status" == CONNECTED* ]]; then
-      log $log_level_info "Node $node_id is not connected. Proceeding to shut down."
+      log $log_level_info "Node is not connected. Proceeding to shut down."
       exit 0
     else
       # Disconnect the node
       log $log_level_info "Disconnecting node $node_id"
       set_node_status "$connected_node_uri" "$node_id" 'DISCONNECTING'
-      sleep 1
-      wait_for_node_status "$connected_node_uri" "$node_id" 'DISCONNECTED'
 
       # Offload the node
-      log $log_level_info "Offloading node $node_id"
-      set_node_status "$connected_node_uri" "$node_id" 'OFFLOADING'
-      wait_for_node_status "$connected_node_uri" "$node_id" 'OFFLOADED'
-      log $log_level_info "Node $node_id offload complete. Proceeding to shut down."
+      if [[ ! $(wait_for_node_status "$connected_node_uri" "$node_id" 'DISCONNECTED') ]]; then
+        log $log_level_info "Offloading node $node_id"
+        set_node_status "$connected_node_uri" "$node_id" 'OFFLOADING'
+        wait_for_node_status "$connected_node_uri" "$node_id" 'OFFLOADED'
+        log $log_level_info "Node $node_id offload complete. Proceeding to shut down."
+      else
+        log $log_level_warn "Failed to disconnect node. Proceeding to shut down."
+      fi
     fi
 
     {{- with .Values.filebeat }}
