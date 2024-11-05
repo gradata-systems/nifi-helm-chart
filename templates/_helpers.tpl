@@ -81,7 +81,7 @@ Certificate subject alternative names
 {{- define "nifi.certificateSubjectAltNames" }}
 {{- $fullName := (include "nifi.fullname" . ) }}
 {{- $namespace := .Release.Namespace }}
-{{- printf "${POD_NAME}.%s.%s,%s-http.%s" $fullName $namespace $fullName $namespace }}
+{{- printf "${POD_NAME}.%s.%s,%s-http.%s,%s" $fullName $namespace $fullName $namespace .Values.ingress.hostName }}
 {{- with .Values.tls.subjectAltNames }}
 {{- printf ",%s" (join "," .) }}
 {{- end }}

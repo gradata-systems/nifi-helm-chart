@@ -70,15 +70,6 @@ tls:
   subjectAltNames: [ ]
 #    - nifi.internal
 
-encryption:
-  # Used to encrypt all repositories
-  repository:
-    enabled: false
-    keyId: 1
-    secretRef:
-      name: ""
-      key: repository.p12 # File extension must be either .p12 or .bcfks
-
 logging:
   # Override log verbosity settings in conf/logback.xml
   levels: { }

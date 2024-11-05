@@ -57,15 +57,6 @@ data:
     prop_add 'nifi.remote.route.http.ingress.port' '443'
     prop_add 'nifi.remote.route.http.ingress.secure' 'true'
 
-    {{- /* Enable repository encryption */}}
-    {{- if .Values.encryption.repository.enabled }}
-    prop_replace 'nifi.repository.encryption.protocol.version' '1'
-    prop_replace 'nifi.repository.encryption.key.id' '{{ .Values.encryption.repository.keyId }}'
-    prop_replace 'nifi.repository.encryption.key.provider' 'KEYSTORE'
-    prop_replace 'nifi.repository.encryption.key.provider.keystore.location' 'conf/{{ .Values.encryption.repository.secretRef.key }}'
-    prop_replace 'nifi.repository.encryption.key.provider.keystore.password' "${KEYSTORE_PASSWORD}"
-    {{- end }}
-
     {{- /* Replace properties not exposed by environment variables */}}
     {{- if .Values.cluster.enabled }}
     export NIFI_CLUSTER_ADDRESS="${host_name}"
@@ -79,7 +70,7 @@ data:
 
     {{- /* Connect to NiFi Registry. These lines are commented out in the base config file. */}}
     nifi_registry_url="https://{{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}:{{ .Values.nifi_registry.ports.https }}"
-    sed -i -E "s|^.*(nifi.nar.library.provider.nifi-registry.implementation=).*$|\1org.apache.nifi.registry.extension.NiFiRegistryNarProvider|g" "${nifi_properties_file}"
+    sed -i -E "s|^.*(nifi.nar.library.provider.nifi-registry.implementation=).*$|\1org.apache.nifi.registry.extension.NiFiRegistryExternalResourceProvider|g" "${nifi_properties_file}"
     sed -i -E "s|^.*(nifi.nar.library.provider.nifi-registry.url=).*$|\1${nifi_registry_url}|g" "${nifi_properties_file}"
 
     {{- /* Grant nodes cluster permissions */}}
@@ -99,7 +90,7 @@ data:
     {{- /* Set file and directory paths to persistent locations */}}
     {{- with .Values.persistence }}
     conf_dir='./persistent_conf'
-    prop_replace 'nifi.flow.configuration.json.file' "${conf_dir}/{{ .config.files.flowJson }}"
+    prop_replace 'nifi.flow.configuration.file' "${conf_dir}/{{ .config.files.flowJson }}"
     prop_replace 'nifi.flow.configuration.archive.dir' "${conf_dir}/archive"
 
     sed -i -E "s|(<property name=\"Authorizations File\">).*(</property>)|\1${conf_dir}/{{ .config.files.authorizations }}\2|g" "${authorizers_file}"

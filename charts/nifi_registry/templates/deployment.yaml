@@ -180,22 +180,16 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 14 }}
           startupProbe:
-            httpGet:
-              path: /nifi-registry
+            tcpSocket:
               port: https
-              scheme: HTTPS
             {{- toYaml .Values.probeTimings.startup | nindent 12 }}
           readinessProbe:
-            httpGet:
-              path: /nifi-registry
+            tcpSocket:
               port: https
-              scheme: HTTPS
             {{- toYaml .Values.probeTimings.readiness | nindent 12 }}
           livenessProbe:
-            httpGet:
-              path: /nifi-registry
+            tcpSocket:
               port: https
-              scheme: HTTPS
             {{- toYaml .Values.probeTimings.liveness | nindent 12 }}
       volumes:
         - name: certs
