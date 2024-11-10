@@ -117,7 +117,6 @@ ports:
   cluster: 11443
   remoteinput: 10443
   loadbalance: 6342
-  metrics: 9092
 
 service:
   external:
@@ -137,14 +136,10 @@ metrics:
   # Expose metrics for each node via Ingress
   ingress:
     enabled: false
-    https: false
-    basePath: /metrics # Metrics are available externally via Ingress for each pod at: /metrics/<pod name>
+    # Metrics are available externally via Ingress for each pod at: /metrics/<pod name>
+    # Requires `view the user interface` permission to be granted to the cluster user, e.g. `CN=test-nifi.nifi`/
+    basePath: /metrics
     requireClientCertificate: false
-
-  # Create a ServiceMonitor to enable Prometheus to scrape metrics from each pod
-  serviceMonitor:
-    enabled: false
-    interval: 10s
 
 # Optionally deploy a filebeat sidecar to ship NiFi logs to a receiver
 filebeat:

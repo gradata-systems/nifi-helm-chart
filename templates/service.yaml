@@ -76,10 +76,6 @@ spec:
       targetPort: https
       protocol: TCP
       name: https
-    - port: {{ $.Values.ports.metrics }}
-      targetPort: metrics
-      protocol: TCP
-      name: metrics
   selector:
     statefulset.kubernetes.io/pod-name: {{ include "nifi.fullname" $ }}-{{ $i }}
     {{- include "nifi.selectorLabels" $ | nindent 4 }}
