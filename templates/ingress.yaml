@@ -74,7 +74,7 @@ spec:
         paths:
         {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
           - path: /{{ include "nifi.fullname" $ }}-{{ $i }}
-            pathType: Prefix
+            pathType: Exact
             backend:
               service:
                 name: {{ include "nifi.fullname" $ }}-{{ $i }}
