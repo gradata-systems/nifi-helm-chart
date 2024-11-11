@@ -134,11 +134,11 @@ cluster:
 
 metrics:
   # Expose metrics for each node via Ingress
+  enabled: true
   ingress:
-    enabled: false
-    # Metrics are available externally via Ingress for each pod at: /metrics/<pod name>
-    # Requires `view the user interface` permission to be granted to the cluster user, e.g. `CN=test-nifi.nifi`/
-    basePath: /metrics
+    # Metrics are available externally via Ingress for each pod at: metrics.<ingress hostname>/<pod name>
+    # Requires `view the user interface` permission to be granted to the cluster user, e.g. `CN=test-nifi.nifi`
+    subDomain: metrics
     requireClientCertificate: false
 
 # Optionally deploy a filebeat sidecar to ship NiFi logs to a receiver

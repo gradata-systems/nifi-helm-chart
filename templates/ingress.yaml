@@ -44,7 +44,7 @@ spec:
                   name: {{ $name }}
           {{- end }}
           {{- end }}
-{{- if .Values.metrics.ingress.enabled }}
+{{- if .Values.metrics.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -66,14 +66,14 @@ spec:
   ingressClassName: {{ .Values.ingress.ingressClassName }}
   tls:
     - hosts:
-        - {{ .Values.ingress.hostName }}
+        - {{ .Values.metrics.ingress.subDomain }}.{{ .Values.ingress.hostName }}
       secretName: {{ include "nifi.fullname" . }}-tls
   rules:
-    - host: {{ .Values.ingress.hostName }}
+    - host: {{ .Values.metrics.ingress.subDomain }}.{{ .Values.ingress.hostName }}
       http:
         paths:
         {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
-          - path: {{ $.Values.metrics.ingress.basePath}}/{{ include "nifi.fullname" $ }}-{{ $i }}
+          - path: /{{ include "nifi.fullname" $ }}-{{ $i }}
             pathType: Prefix
             backend:
               service:
