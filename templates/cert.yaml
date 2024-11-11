@@ -9,6 +9,9 @@ spec:
   commonName: {{ include "nifi.fullname" . }}.{{ .Release.Namespace }}
   dnsNames:
     - {{ .Values.ingress.hostName }}
+    {{- if .Values.metrics.enabled }}
+    - {{ include "nifi.metricsHostName" . }}
+    {{- end }}
     - {{ include "nifi.siteToSiteHostName" . }}
     {{- include "nifi.ingressNodeList" . | nindent 4 }}
   usages:

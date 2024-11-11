@@ -56,6 +56,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 {{- end }}
 
+{{- define "nifi.metricsHostName" -}}
+{{ printf "%s.%s" .Values.metrics.ingress.subDomain .Values.ingress.hostName }}
+{{- end }}
+
 {{/*
 NiFi Registry FQDN
 */}}

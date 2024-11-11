@@ -66,10 +66,10 @@ spec:
   ingressClassName: {{ .Values.ingress.ingressClassName }}
   tls:
     - hosts:
-        - {{ .Values.metrics.ingress.subDomain }}.{{ .Values.ingress.hostName }}
+      - {{ include "nifi.metricsHostName" . }}
       secretName: {{ include "nifi.fullname" . }}-tls
   rules:
-    - host: {{ .Values.metrics.ingress.subDomain }}.{{ .Values.ingress.hostName }}
+    - host: {{ include "nifi.metricsHostName" . }}
       http:
         paths:
         {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
