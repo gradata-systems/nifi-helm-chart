@@ -109,14 +109,16 @@ spec:
             {{- if .Values.cluster.enabled }}
             - name: NIFI_CLUSTER_IS_NODE
               value: "true"
+            - name: NIFI_CLUSTER_LEADER_ELECTION_IMPLEMENTATION
+              value: KubernetesLeaderElectionManager
+            - name: NIFI_CLUSTER_LEADER_ELECTION_KUBERNETES_LEASE_PREFIX
+              value: {{ .Values.cluster.kubernetes.leasePrefix | quote }}
+            - name: NIFI_STATE_MANAGEMENT_PROVIDER_CLUSTER
+              value: kubernetes-provider
             - name: NIFI_ELECTION_MAX_CANDIDATES
               value: {{ .Values.global.nifi.nodeCount | quote }}
             - name: NIFI_CLUSTER_NODE_PROTOCOL_MAX_THREADS
               value: {{ .Values.cluster.traffic.maxThreads | quote }}
-            - name: NIFI_ZK_CONNECT_STRING
-              value: {{ .Values.cluster.zookeeper.connectionString | quote }}
-            - name: NIFI_ZK_ROOT_NODE
-              value: {{ .Values.cluster.zookeeper.rootNode | quote }}
             - name: NIFI_CLUSTER_NODE_PROTOCOL_PORT
               value: {{ .Values.ports.cluster | quote }}
             {{- end }}

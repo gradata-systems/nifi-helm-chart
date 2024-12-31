@@ -128,9 +128,9 @@ cluster:
   enabled: true
   traffic:
     maxThreads: 100 # Max number of threads used for inter-node communication
-  zookeeper:
-    connectionString: "" # zk01:2181,zk02:2181,zk03:2181
-    rootNode: /nifi
+  kubernetes:
+    leasePrefix: "" # prod-lease
+    statePrefix: "" # prod-state
 
 metrics:
   # Expose metrics for each node via Ingress

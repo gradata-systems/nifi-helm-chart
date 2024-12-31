@@ -25,6 +25,7 @@ data:
     bootstrap_file='conf/bootstrap.conf'
     nifi_properties_file='conf/nifi.properties'
     logback_file='conf/logback.xml'
+    state_management_file='conf/state-management.xml'
     scripts_dir='/opt/nifi/scripts'
     [ -f "${scripts_dir}/common.sh" ] && . "${scripts_dir}/common.sh"
 
@@ -60,13 +61,8 @@ data:
     {{- /* Replace properties not exposed by environment variables */}}
     {{- if .Values.cluster.enabled }}
     export NIFI_CLUSTER_ADDRESS="${host_name}"
-    prop_replace 'nifi.zookeeper.client.secure' 'true'
-    prop_replace 'nifi.zookeeper.security.keystore' "${KEYSTORE_PATH}"
-    prop_replace 'nifi.zookeeper.security.keystoreType' "${KEYSTORE_TYPE}"
-    prop_replace 'nifi.zookeeper.security.keystorePasswd' "${KEYSTORE_PASSWORD}"
-    prop_replace 'nifi.zookeeper.security.truststore' "${TRUSTSTORE_PATH}"
-    prop_replace 'nifi.zookeeper.security.truststoreType' "${TRUSTSTORE_TYPE}"
-    prop_replace 'nifi.zookeeper.security.truststorePasswd' "${TRUSTSTORE_PASSWORD}"
+    prop_replace 'nifi.state.management.provider.cluster' 'kubernetes-provider'
+    xmlstarlet ed --inplace --update "/stateManagement/cluster-provider[id='kubernetes-provider']/property[@name='ConfigMap Name Prefix']" --value '{{ .Values.cluster.kubernetes.statePrefix }}' "${state_management_file}"
 
     {{- /* Connect to NiFi Registry. These lines are commented out in the base config file. */}}
     nifi_registry_url="https://{{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}:{{ .Values.nifi_registry.ports.https }}"

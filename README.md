@@ -6,7 +6,7 @@ This chart deploys both [NiFi](https://nifi.apache.org/docs/nifi-docs/) and [NiF
 
 ## Key features
 
-1. Secure defaults: TLS for inter-node and Zookeeper communication, LDAP for single sign-on and support for repository encryption.
+1. Secure defaults: TLS for inter-node communication and LDAP for single sign-on.
 2. Flexible allocation of repositories (content, flowfile and provenance) to PVCs.
 3. Expose additional ports and/or Ingress routes to leverage NiFi listen processors like [ListenTCP](https://nifi.apache.org/docs/nifi-docs/components/org.apache.nifi/nifi-standard-nar/1.21.0/org.apache.nifi.processors.standard.ListenTCP/index.html).
 4. Mount additional volumes such as NFS directories or Kubernetes secrets.
@@ -20,7 +20,6 @@ This chart deploys both [NiFi](https://nifi.apache.org/docs/nifi-docs/) and [NiF
 
 1. [cert-manager](https://github.com/cert-manager/cert-manager)
 2. [cert-manager csi-driver](https://github.com/cert-manager/csi-driver)
-3. External Zookeeper, such as: https://github.com/gradata-systems/zookeeper-helm-chart
 
 ### Optional
 
@@ -33,7 +32,6 @@ This chart deploys both [NiFi](https://nifi.apache.org/docs/nifi-docs/) and [NiF
    1. `global.nifi.encryption` Sensitive properties encryption key (stored in a Kubernetes secret)
    2. `global.tls` TLS certificate issuer and keystore password secret
    3. `global.ldap` LDAP connection details for both Nifi and NiFi Registry
-   4. `cluster.zookeeper` External Zookeeper connection string
    5. `ingress.hostName`
    6. `jvmHeap` Min/max JVM heap size. Rough rule is to size this to be half of the pod limit
    7. `resources` Pod CPU/memory resource requests and limits
