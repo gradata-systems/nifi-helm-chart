@@ -1,3 +1,4 @@
+{{- if .Values.enabled }}
 {{- $nifiRegistryHome := "/opt/nifi-registry/nifi-registry-current" }}
 {{- $flowStorageDir := printf "%s/data/flow_storage" $nifiRegistryHome }}
 {{- $bundleStorageDir := printf "%s/data/extension_bundles" $nifiRegistryHome }}
@@ -238,3 +239,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}
