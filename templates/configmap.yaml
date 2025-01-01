@@ -130,9 +130,6 @@ data:
     {{- /* Task termination period */}}
     prop_replace 'graceful.shutdown.seconds' {{ .Values.shutdown.gracefulShutdownSeconds }} "${bootstrap_file}"
 
-    {{- /* Set UI autorefresh interval */}}
-    prop_replace 'nifi.ui.autorefresh.interval' {{ .Values.ui.refreshInterval | squote }}
-
     {{- with .Values.ui.timeZone }}
     echo 'java.arg.8=-Duser.timezone={{ . }}' >> "${bootstrap_file}"
     {{- end }}
