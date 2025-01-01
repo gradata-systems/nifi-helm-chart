@@ -65,9 +65,11 @@ data:
     xmlstarlet ed --inplace --update "/stateManagement/cluster-provider[id='kubernetes-provider']/property[@name='ConfigMap Name Prefix']" --value '{{ .Values.cluster.kubernetes.statePrefix }}' "${state_management_file}"
 
     {{- /* Connect to NiFi Registry. These lines are commented out in the base config file. */}}
+    {{- if .Values.nifi_registry.enabled }}
     nifi_registry_url="https://{{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}:{{ .Values.nifi_registry.ports.https }}"
     sed -i -E "s|^.*(nifi.nar.library.provider.nifi-registry.implementation=).*$|\1org.apache.nifi.registry.extension.NiFiRegistryExternalResourceProvider|g" "${nifi_properties_file}"
     sed -i -E "s|^.*(nifi.nar.library.provider.nifi-registry.url=).*$|\1${nifi_registry_url}|g" "${nifi_properties_file}"
+    {{- end }}
 
     {{- /* Grant nodes cluster permissions */}}
     list_identities () {
