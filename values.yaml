@@ -57,8 +57,8 @@ debugStartup: false
 
 # Number of seconds to wait for tasks to complete on shutdown, before forcefully terminating them
 shutdown:
-  gracefulShutdownSeconds: 20 # Consider whether there are any long-running processors defined in the flow
-  podTerminationGracePeriodSeconds: 30 # Should be longer than `gracefulShutdownSeconds`
+  gracefulShutdownSeconds: 30 # Consider whether there are any long-running processors defined in the flow
+  podTerminationGracePeriodSeconds: 60 # Should be longer than `gracefulShutdownSeconds`
 
 ui:
   refreshInterval: 10 sec

@@ -168,7 +168,7 @@ data:
     log_level_error='ERROR'
     host_name="${HOSTNAME}.{{ include "nifi.fullname" . }}.{{ .Release.Namespace }}"
     default_node_uri="https://{{ $serviceHostName }}:{{ .Values.ports.https }}/nifi-api"
-    max_retries=3
+    max_retries=10
 
     function log() {
       log_level=$1
