@@ -1,6 +1,6 @@
 # Apache NiFi Helm Chart
 
-This Helm chart is designed to be an easy-to-use method of deploying a NiFi cluster using secure defaults and the convenience of [cert-manager](https://cert-manager.io/) for securing traffic and managing repository encryption.
+This Helm chart is designed to be an easy-to-use method of deploying a NiFi cluster using secure defaults and the convenience of [cert-manager](https://cert-manager.io/) for securing traffic.
 
 This chart deploys both [NiFi](https://nifi.apache.org/docs/nifi-docs/) and [NiFi Registry](https://nifi.apache.org/registry.html).
 
