@@ -158,16 +158,25 @@ data:
     {{- end }}
 
     exec $scripts_dir/start.sh
+  {{- /* The pre-stop hook counts against the pod termination grace period. Leave enough of it for NiFi's graceful shutdown. */}}
+  {{- $preStopSeconds := sub (int .Values.shutdown.podTerminationGracePeriodSeconds) (add (int .Values.shutdown.gracefulShutdownSeconds) 10) }}
+  {{- if lt (int $preStopSeconds) 30 }}
+  {{- fail "shutdown.podTerminationGracePeriodSeconds must be at least 40 seconds longer than shutdown.gracefulShutdownSeconds, to allow time for the node to be offloaded" }}
+  {{- end }}
   pre-stop.sh: |
     #!/bin/bash
 
     log_file='/opt/nifi/nifi-current/logs/k8s-pre-stop.log'
+    app_log_file='/opt/nifi/nifi-current/logs/nifi-app.log'
     log_level_info='INFO'
     log_level_warn='WARN'
     log_level_error='ERROR'
     host_name="${HOSTNAME}.{{ include "nifi.fullname" . }}.{{ .Release.Namespace }}"
     default_node_uri="https://{{ $serviceHostName }}:{{ .Values.ports.https }}/nifi-api"
     max_retries=10
+
+    # Give up waiting at this time, so NiFi still has `gracefulShutdownSeconds` to stop before the pod is killed
+    deadline=$(( $(date +%s) + {{ $preStopSeconds }} ))
 
     function log() {
       log_level=$1
@@ -250,7 +259,7 @@ data:
       shift 3
 
       retry_count=0
-      while [ $retry_count -lt $max_retries ]
+      while [ $retry_count -lt $max_retries ] && [ "$(date +%s)" -lt $deadline ]
       do
         log $log_level_info "Waiting for node $node_id to reach status $node_status..."
         current_status=$(get_node_status "$node_uri" "$node_id")
@@ -263,6 +272,38 @@ data:
         fi
         sleep 3
       done
+      log $log_level_warn "Gave up waiting for node $node_id to reach status $node_status. Last status: $current_status"
+      return 1
+    }
+
+    function wait_for_offload() {
+      node_uri=$1
+      node_id=$2
+      app_log_offset=$3
+      shift 3
+
+      retry_count=0
+      while [ $retry_count -lt $max_retries ] && [ "$(date +%s)" -lt $deadline ]
+      do
+        log $log_level_info "Waiting for node $node_id to offload..."
+        current_status=$(get_node_status "$node_uri" "$node_id")
+        if [ $? -ne 0 ] || [ -z "$current_status" ]; then
+          retry_count=$((retry_count+1))
+        elif [[ "$current_status" == 'OFFLOADED' ]]; then
+          log $log_level_info "Node $node_id reached status OFFLOADED"
+          return 0
+        fi
+
+        # The cluster coordinator sometimes rejects the node's report that offloading finished (for example, when the
+        # node being offloaded was the coordinator), so the node never shows as OFFLOADED. NiFi logs this message once
+        # the node's queues are empty, whether or not the coordinator accepted the report.
+        if tail -c +$((app_log_offset + 1)) "$app_log_file" 2>/dev/null | grep -q 'Node offloaded due to'; then
+          log $log_level_warn "Node $node_id finished offloading, but the cluster reports its status as $current_status"
+          return 0
+        fi
+        sleep 3
+      done
+      log $log_level_warn "Gave up waiting for node $node_id to offload. Last status: $current_status"
       return 1
     }
 
@@ -283,11 +324,15 @@ data:
       set_node_status "$connected_node_uri" "$node_id" 'DISCONNECTING'
 
       # Offload the node
-      if [[ ! $(wait_for_node_status "$connected_node_uri" "$node_id" 'DISCONNECTED') ]]; then
+      if wait_for_node_status "$connected_node_uri" "$node_id" 'DISCONNECTED'; then
         log $log_level_info "Offloading node $node_id"
+        app_log_offset=$(stat -c %s "$app_log_file" 2>/dev/null || echo 0)
         set_node_status "$connected_node_uri" "$node_id" 'OFFLOADING'
-        wait_for_node_status "$connected_node_uri" "$node_id" 'OFFLOADED'
-        log $log_level_info "Node $node_id offload complete. Proceeding to shut down."
+        if wait_for_offload "$connected_node_uri" "$node_id" "$app_log_offset"; then
+          log $log_level_info "Node $node_id offload complete. Proceeding to shut down."
+        else
+          log $log_level_warn "Node $node_id did not finish offloading. Proceeding to shut down."
+        fi
       else
         log $log_level_warn "Failed to disconnect node. Proceeding to shut down."
       fi

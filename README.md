@@ -61,3 +61,4 @@ Nifi rolling upgrades are not officially supported, due to issues with flow vers
 
 1. If pods fail to start up in time, before the Kubernetes liveness probe kills the pod, increase the probe parameters in the `probeTimings` section of [values.yaml](values.yaml).
 2. NiFi pods initially fail to become `Ready`. NiFi will fail to bootstrap if it can't reach Nifi Registry during startup. It is normal for NiFi pods to fail liveness probes and be restarted at least once, while waiting for NiFi Registry to become available.
+3. When a pod stops (for example, during `kubectl drain`), its pre-stop hook disconnects the node and offloads its queued FlowFiles to the other nodes. It logs its progress to `logs/k8s-pre-stop.log`. If the log shows `Gave up waiting for node ... to offload`, the node was stopped with FlowFiles still queued. Increase `shutdown.podTerminationGracePeriodSeconds` so offloading has time to finish.
