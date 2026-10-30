@@ -2,8 +2,6 @@
 
 This Helm chart is designed to be an easy-to-use method of deploying a NiFi cluster using secure defaults and the convenience of [cert-manager](https://cert-manager.io/) for securing traffic.
 
-This chart deploys both [NiFi](https://nifi.apache.org/docs/nifi-docs/) and [NiFi Registry](https://nifi.apache.org/registry.html).
-
 ## Key features
 
 1. Secure defaults: TLS for inter-node communication and LDAP for single sign-on.
@@ -24,21 +22,17 @@ This chart deploys both [NiFi](https://nifi.apache.org/docs/nifi-docs/) and [NiF
 ### Optional
 
 1. [ingress-nginx](https://github.com/kubernetes/ingress-nginx) (preferred, not tested with other Ingress controllers)
-2. MySQL instance (for NiFi Registry)
 
 ## Installation
 
 1. Customise the required sections of the Helm [values.yaml](values.yaml):
    1. `global.nifi.encryption` Sensitive properties encryption key (stored in a Kubernetes secret)
    2. `global.tls` TLS certificate issuer and keystore password secret
-   3. `global.ldap` LDAP connection details for both Nifi and NiFi Registry
-   5. `ingress.hostName`
-   6. `jvmHeap` Min/max JVM heap size. Rough rule is to size this to be half of the pod limit
-   7. `resources` Pod CPU/memory resource requests and limits
-   8. `volumeClaims` Provide at least one PVC template for data persistence
-   9. `nifi_registry.ingress.hostName`
-   10. `nifi_registry.database`
-   11. `nifi_registry.persistentVolumeClaim` PVC to use for NiFi Registry [file system persistence provider](https://nifi.apache.org/docs/nifi-registry-docs/html/administration-guide.html#filesystemflowpersistenceprovider)
+   3. `global.ldap` LDAP connection details
+   4. `ingress.hostName`
+   5. `jvmHeap` Min/max JVM heap size. Rough rule is to size this to be half of the pod limit
+   6. `resources` Pod CPU/memory resource requests and limits
+   7. `volumeClaims` Provide at least one PVC template for data persistence
 2. `helm install -n nifi --create-namespace nifi -f values.yaml oci://ghcr.io/gradata-systems/helm-charts/nifi`
 3. Grant each NiFi node the following controller permissions. This is required in order for nodes to automatically disconnect and offload themselves prior to pod termination:
    1. Access the controller (view)
@@ -51,14 +45,11 @@ Nifi rolling upgrades are not officially supported, due to issues with flow vers
 ### Procedure
 
 1. Uninstall Helm chart
-2. Wait for all NiFi and NiFi Registry pods to terminate
-3. Set image tags to reference new `nifi` and `nifi-registry` image versions:
-   1. `image.tag`
-   2. `nifi_registry.image.tag`
+2. Wait for all NiFi pods to terminate
+3. Set `image.tag` to reference the new `nifi` image version
 4. Install Helm chart
 
 ## Troubleshooting
 
 1. If pods fail to start up in time, before the Kubernetes liveness probe kills the pod, increase the probe parameters in the `probeTimings` section of [values.yaml](values.yaml).
-2. NiFi pods initially fail to become `Ready`. NiFi will fail to bootstrap if it can't reach Nifi Registry during startup. It is normal for NiFi pods to fail liveness probes and be restarted at least once, while waiting for NiFi Registry to become available.
-3. When a pod stops (for example, during `kubectl drain`), its pre-stop hook disconnects the node and offloads its queued FlowFiles to the other nodes. It logs its progress to `logs/k8s-pre-stop.log`. If the log shows `Gave up waiting for node ... to offload`, the node was stopped with FlowFiles still queued. Increase `shutdown.podTerminationGracePeriodSeconds` so offloading has time to finish.
+2. When a pod stops (for example, during `kubectl drain`), its pre-stop hook disconnects the node and offloads its queued FlowFiles to the other nodes. It logs its progress to `logs/k8s-pre-stop.log`. If the log shows `Gave up waiting for node ... to offload`, the node was stopped with FlowFiles still queued. Increase `shutdown.podTerminationGracePeriodSeconds` so offloading has time to finish.

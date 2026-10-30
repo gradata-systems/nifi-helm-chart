@@ -61,13 +61,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-NiFi Registry FQDN
-*/}}
-{{- define "nifi.registryUrl" -}}
-{{ .Release.Name }}-{{ include "nifi-registry.fullname" . }}.{{ .Release.Namespace }}.svc
-{{- end }}
-
-{{/*
 Certificate path constants
 */}}
 {{- $keystoreFile := "keystore.p12" }}
@@ -108,7 +101,7 @@ Returns whether `.Values.extraPorts` contains one or more entries with either `n
 {{- end }}
 
 {{/*
-Common NiFi/Registry keystore environment variables
+Common NiFi keystore environment variables
 */}}
 {{- define "nifi.keystoreEnvironment" -}}
 - name: KEYSTORE_PATH
@@ -130,7 +123,7 @@ Common NiFi/Registry keystore environment variables
 {{- end }}
 
 {{/*
-Comon NiFi/Registry LDAP environment variables
+Common NiFi LDAP environment variables
 */}}
 {{- define "nifi.ldapEnvironment" -}}
 {{- with .Values.global.ldap -}}
