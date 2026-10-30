@@ -4,6 +4,7 @@
 * Removed the `ui.refreshInterval` value. NiFi 2 no longer supports `nifi.ui.autorefresh.interval`.
 
 # Enhancements
+* Support NiFi 2.12.0
 * The pre-stop hook stops waiting before the pod's termination grace period ends. This leaves `gracefulShutdownSeconds` + 10 seconds for NiFi to stop, instead of the pod being killed mid-shutdown.
 * The pre-stop hook logs a warning to `logs/k8s-pre-stop.log` when it gives up waiting for the node to disconnect or offload.
 
