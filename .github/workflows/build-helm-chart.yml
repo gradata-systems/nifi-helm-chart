@@ -1,15 +1,16 @@
-# Builds the Helm chart and pushes to ghcr.io
+# Builds the Helm chart, and pushes it to ghcr.io when a version tag (e.g. `v1.0.0`) is pushed
 name: build-helm-chart
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "master" branch
+  # Pushing a version tag releases the chart. Pushes and pull requests to the "master" branch only check that it packages.
   push:
     branches: [ "master" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "master" ]
 
-  # Allows you to run this workflow manually from the Actions tab
+  # Allows you to run this workflow manually from the Actions tab. Only releases when run against a version tag.
   workflow_dispatch:
 
 env:
@@ -30,18 +31,36 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Install Helm
         uses: azure/setup-helm@v3.3
         with:
           version: v3.9.0
       
-      - name: Helm repo login
-        run: |
-          helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Helm chart package and push
+      - name: Helm chart package
+        id: package
         run: |
           tar_path=$(helm package . | sed -E 's/^.+ saved it to: (.+)$/\1/')
-          helm push "$tar_path" oci://${{ env.REGISTRY }}/gradata-systems/helm-charts
+          echo "tar_path=$tar_path" >> "$GITHUB_OUTPUT"
+
+      - name: Check tag matches chart version
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          chart_version=$(sed -nE 's/^version: *"?([^"]+)"?$/\1/p' Chart.yaml)
+          if [[ "$TAG" != "v$chart_version" ]]; then
+            echo "::error::Tag $TAG does not match chart version $chart_version"
+            exit 1
+          fi
+
+      - name: Helm repo login
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          helm registry login ${{ env.REGISTRY }} --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Helm chart push
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          helm push "${{ steps.package.outputs.tar_path }}" oci://${{ env.REGISTRY }}/gradata-systems/helm-charts
