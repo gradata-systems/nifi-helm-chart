@@ -1,0 +1,18 @@
+# The NiFi cluster under test, reached through the ingress controller at nifi.test
+global:
+  nifi:
+    nodeCount: 2
+
+ingress:
+  hostName: nifi.test
+
+shutdown:
+  gracefulShutdownSeconds: 20
+  podTerminationGracePeriodSeconds: 180
+
+# Served by a ListenHTTP processor that the extra ports test creates
+extraPorts:
+  listen:
+    containerPort: 9443
+    ingress:
+      path: /listen

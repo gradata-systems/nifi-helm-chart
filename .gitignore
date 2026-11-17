@@ -2,3 +2,8 @@
 # Chart dependencies
 **/charts/*.tgz
 
+
+### Python (e2e tests)
+.venv/
+__pycache__/
+.pytest_cache/

@@ -1,0 +1,19 @@
+ingress:
+  controller: gateway
+  gateway:
+    parentRefs:
+      - name: nifi
+        namespace: gateway
+        sectionName: https
+    metrics:
+      parentRefs:
+        - name: nifi-metrics
+          namespace: gateway
+    siteToSite:
+      parentRefs:
+        - name: nifi
+          namespace: gateway
+          sectionName: s2s
+        - name: nifi
+          namespace: gateway
+          sectionName: s2s-nodes

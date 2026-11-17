@@ -21,3 +21,6 @@
 .idea/
 *.tmproj
 .vscode/
+
+# End-to-end test suite
+tests/

@@ -1,0 +1,23 @@
+# NiFi only listens on its pod host name, not localhost, so `kubectl port-forward` can't reach it directly.
+# The tests port-forward to this relay instead, which forwards TCP (TLS is end-to-end) to the client NiFi.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: relay
+  namespace: nifi-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: relay
+  template:
+    metadata:
+      labels:
+        app: relay
+    spec:
+      containers:
+        - name: socat
+          image: alpine/socat:1.8.0.3
+          args: [ "TCP-LISTEN:8443,fork,reuseaddr", "TCP:client-nifi-http.nifi-client.svc.cluster.local:8443" ]
+          ports:
+            - containerPort: 8443

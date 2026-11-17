@@ -1,0 +1,48 @@
+# Settings shared by both NiFi releases in the e2e tests. Secret `nifi-e2e` is created by the test setup.
+global:
+  encryption:
+    sensitivePropertiesKey:
+      secretRef:
+        name: nifi-e2e
+        key: sensitive-props-key
+  tls:
+    certificate:
+      keystorePasswordSecretRef:
+        name: nifi-e2e
+        key: keystore-password
+      issuerRef:
+        name: nifi-e2e-ca
+        kind: ClusterIssuer
+  ldap:
+    url: ldap://ldap.ldap.svc.cluster.local:3890
+    authenticationStrategy: SIMPLE
+    identityStrategy: USE_USERNAME
+    initialAdminIdentity: admin
+    manager:
+      distinguishedName: uid=admin,ou=people,dc=nifi,dc=test
+      passwordSecretRef:
+        name: nifi-e2e
+        key: ldap-password
+    userSearchBase: ou=people,dc=nifi,dc=test
+    userSearchFilter: uid={0}
+
+jvmHeap:
+  min: 512m
+  max: 1g
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 1536Mi
+
+volumeClaims:
+  data:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 2Gi
+
+probeTimings:
+  startup:
+    failureThreshold: 60

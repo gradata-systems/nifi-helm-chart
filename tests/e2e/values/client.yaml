@@ -1,0 +1,8 @@
+# A separate single-node NiFi that sends data to the target over site-to-site, through the ingress controller
+global:
+  nifi:
+    nodeCount: 1
+
+ingress:
+  enabled: false
+  hostName: client.nifi.test

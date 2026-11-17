@@ -1,0 +1,59 @@
+# Lightweight LDAP server for NiFi logins. User `admin` (password `nifi-e2e-password`) is NiFi's initial admin.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ldap
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ldap
+  namespace: ldap
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ldap
+  template:
+    metadata:
+      labels:
+        app: ldap
+    spec:
+      containers:
+        - name: lldap
+          image: lldap/lldap:v0.6.2
+          env:
+            - name: LLDAP_LDAP_BASE_DN
+              value: dc=nifi,dc=test
+            - name: LLDAP_LDAP_USER_PASS
+              value: nifi-e2e-password
+            - name: LLDAP_JWT_SECRET
+              value: nifi-e2e-jwt-secret-not-for-production
+            - name: LLDAP_KEY_SEED
+              value: nifi-e2e-key-seed-not-for-production
+          ports:
+            - name: ldap
+              containerPort: 3890
+          readinessProbe:
+            tcpSocket:
+              port: ldap
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: { }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ldap
+  namespace: ldap
+spec:
+  selector:
+    app: ldap
+  ports:
+    - name: ldap
+      port: 3890
+      targetPort: ldap

@@ -1,0 +1,81 @@
+# Gateways for the `gateway` controller tests (Envoy Gateway). They're in their own namespace, so the chart's
+# ReferenceGrant is exercised.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: nifi-e2e
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: nifi
+  namespace: gateway
+spec:
+  gatewayClassName: nifi-e2e
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: nifi.test
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: nifi-tls
+            namespace: nifi
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: s2s
+      protocol: TLS
+      port: 443
+      hostname: s2s.nifi.test
+      tls:
+        mode: Passthrough
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: s2s-nodes
+      protocol: TLS
+      port: 443
+      hostname: "*.s2s.nifi.test"
+      tls:
+        mode: Passthrough
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+# Metrics need a backend client certificate, which applies to every route on a Gateway, so they get their own
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: nifi-metrics
+  namespace: gateway
+spec:
+  gatewayClassName: nifi-e2e
+  tls:
+    backend:
+      clientCertificateRef:
+        group: ""
+        kind: Secret
+        name: nifi-tls
+        namespace: nifi
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: metrics.nifi.test
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: nifi-tls
+            namespace: nifi
+      allowedRoutes:
+        namespaces:
+          from: All
