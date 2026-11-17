@@ -1,3 +1,4 @@
+{{- if include "nifi.ingressEnabledFor" (list . "nginx") }}
 {{- $serviceName := (printf "%s-http" (include "nifi.fullname" . )) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -13,37 +14,8 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  ingressClassName: {{ .Values.ingress.ingressClassName }}
-  tls:
-    - hosts:
-        - {{ .Values.ingress.hostName }}
-      secretName: {{ include "nifi.fullname" . }}-tls
-  rules:
-    - host: {{ .Values.ingress.hostName }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ $serviceName }}
-                port:
-                  name: https
-          {{- range $name, $port := .Values.extraPorts }}
-          {{- if $port.ingress }}
-          - path: {{ $port.ingress.path | quote }}
-            pathType: {{ $port.ingress.pathType | default "Exact" }}
-            backend:
-              service:
-                {{- if $port.nodePort }}
-                name: {{ include "nifi.fullname" $ }}-nodeport
-                {{- else }}
-                name: {{ $serviceName }}
-                {{- end }}
-                port:
-                  name: {{ $name }}
-          {{- end }}
-          {{- end }}
+  ingressClassName: {{ include "nifi.ingressClassName" . }}
+  {{- include "nifi.hostIngressSpec" (dict "ctx" . "ui" true "extraPorts" true) | nindent 2 }}
 {{- if .Values.metrics.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
@@ -63,7 +35,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-ssl-secret: {{ .Release.Namespace }}/{{ include "nifi.fullname" . }}-tls
     {{- end }}
 spec:
-  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  ingressClassName: {{ include "nifi.ingressClassName" . }}
   tls:
     - hosts:
       - {{ include "nifi.metricsHostName" . }}
@@ -106,7 +78,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  ingressClassName: {{ include "nifi.ingressClassName" . }}
   tls:
     - hosts:
         - {{ include "nifi.siteToSiteHostName" . }}
@@ -135,3 +107,4 @@ spec:
                 port:
                   name: https
     {{- end }}
+{{- end }}

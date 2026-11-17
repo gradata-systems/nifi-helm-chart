@@ -1,0 +1,162 @@
+{{- if include "nifi.ingressEnabledFor" (list . "traefik") }}
+{{- $fullName := include "nifi.fullname" . }}
+{{- $serviceName := printf "%s-http" $fullName }}
+{{- $entryPoints := .Values.ingress.traefik.entryPoints }}
+{{- /* Verifies the NiFi server certificate when Traefik proxies to it over HTTPS */}}
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+spec:
+  serverName: {{ $serviceName }}.{{ .Release.Namespace }}
+  rootCAs:
+    - secret: {{ $fullName }}-tls
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    {{- with $entryPoints }}
+    traefik.ingress.kubernetes.io/router.entrypoints: {{ join "," . }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ include "nifi.ingressClassName" . }}
+  {{- include "nifi.hostIngressSpec" (dict "ctx" . "ui" true "extraPorts" false) | nindent 2 }}
+{{- if include "nifi.hasExtraPortIngress" . }}
+---
+{{- /*
+Traefik orders routers by rule length, so a short path such as `Path(/listen)` can lose to the UI's `PathPrefix(/)`.
+Serve `extraPorts` paths from a separate Ingress with a higher priority.
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}-extra-ports
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.priority: "1000"
+    {{- with $entryPoints }}
+    traefik.ingress.kubernetes.io/router.entrypoints: {{ join "," . }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ include "nifi.ingressClassName" . }}
+  {{- include "nifi.hostIngressSpec" (dict "ctx" . "ui" false "extraPorts" true) | nindent 2 }}
+{{- end }}
+{{- if .Values.metrics.enabled }}
+---
+{{- /* Presents the chart's certificate to NiFi, so metrics requests are authenticated as the ingress identity */}}
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: {{ $fullName }}-metrics
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+spec:
+  serverName: {{ $serviceName }}.{{ .Release.Namespace }}
+  rootCAs:
+    - secret: {{ $fullName }}-tls
+  certificatesSecrets:
+    - {{ $fullName }}-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $fullName }}-metrics
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+spec:
+  replacePath:
+    path: /nifi-api/flow/metrics/prometheus
+{{- if .Values.metrics.ingress.requireClientCertificate }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: TLSOption
+metadata:
+  name: {{ $fullName }}-metrics
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+spec:
+  clientAuth:
+    secretNames:
+      - {{ $fullName }}-tls
+    clientAuthType: RequireAndVerifyClientCert
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}-metrics
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    {{- with $entryPoints }}
+    traefik.ingress.kubernetes.io/router.entrypoints: {{ join "," . }}
+    {{- end }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .Release.Namespace }}-{{ $fullName }}-metrics@kubernetescrd
+    {{- if .Values.metrics.ingress.requireClientCertificate }}
+    traefik.ingress.kubernetes.io/router.tls.options: {{ .Release.Namespace }}-{{ $fullName }}-metrics@kubernetescrd
+    {{- end }}
+spec:
+  ingressClassName: {{ include "nifi.ingressClassName" . }}
+  tls:
+    - hosts:
+        - {{ include "nifi.metricsHostName" . }}
+      secretName: {{ $fullName }}-tls
+  rules:
+    - host: {{ include "nifi.metricsHostName" . }}
+      http:
+        paths:
+        {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
+          - path: /{{ $fullName }}-{{ $i }}
+            pathType: Exact
+            backend:
+              service:
+                name: {{ $fullName }}-{{ $i }}
+                port:
+                  name: https
+        {{- end }}
+{{- end }}
+---
+{{- /*
+Site-to-site uses TLS passthrough, so the remote NiFi authenticates directly with each node using its client certificate
+*/}}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: {{ $fullName }}-s2s
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+spec:
+  {{- with $entryPoints }}
+  entryPoints:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  routes:
+    - match: HostSNI(`{{ include "nifi.siteToSiteHostName" . }}`)
+      services:
+        - name: {{ $serviceName }}
+          port: {{ .Values.ports.https }}
+    {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
+    - match: HostSNI(`{{ printf "%s-%d.%s" $fullName $i (include "nifi.siteToSiteHostName" $) }}`)
+      services:
+        - name: {{ $fullName }}-{{ $i }}
+          port: {{ $.Values.ports.https }}
+    {{- end }}
+  tls:
+    passthrough: true
+{{- end }}

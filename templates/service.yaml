@@ -4,6 +4,15 @@ metadata:
   name: {{ include "nifi.fullname" . }}-http
   labels:
     {{- include "nifi.labels" . | nindent 4 }}
+  {{- if include "nifi.ingressEnabledFor" (list . "traefik") }}
+  annotations:
+    traefik.ingress.kubernetes.io/service.serversscheme: https
+    traefik.ingress.kubernetes.io/service.serverstransport: {{ .Release.Namespace }}-{{ include "nifi.fullname" . }}@kubernetescrd
+    {{- /* Keep each browser session on the same node */}}
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.secure: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.httponly: "true"
+  {{- end }}
 spec:
   type: ClusterIP
   ports:
@@ -68,6 +77,11 @@ metadata:
   name: {{ include "nifi.fullname" $ }}-{{ $i }}
   labels:
     {{- include "nifi.labels" $ | nindent 4 }}
+  {{- if and (include "nifi.ingressEnabledFor" (list $ "traefik")) $.Values.metrics.enabled }}
+  annotations:
+    traefik.ingress.kubernetes.io/service.serversscheme: https
+    traefik.ingress.kubernetes.io/service.serverstransport: {{ $.Release.Namespace }}-{{ include "nifi.fullname" $ }}-metrics@kubernetescrd
+  {{- end }}
 spec:
   type: ClusterIP
   clusterIP: None

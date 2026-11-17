@@ -1,0 +1,229 @@
+{{- if include "nifi.ingressEnabledFor" (list . "gateway") }}
+{{- $fullName := include "nifi.fullname" . }}
+{{- $serviceName := printf "%s-http" $fullName }}
+{{- $gateway := .Values.ingress.gateway }}
+{{- if not $gateway.parentRefs }}
+{{- fail "ingress.gateway.parentRefs must reference the Gateway listener that serves HTTPS traffic for ingress.hostName" }}
+{{- end }}
+{{- $metricsParentRefs := (($gateway.metrics).parentRefs) | default $gateway.parentRefs }}
+{{- $backendTLSPolicyVersion := $gateway.apiVersions.backendTLSPolicy }}
+{{- if not $backendTLSPolicyVersion }}
+{{- $backendTLSPolicyVersion = "gateway.networking.k8s.io/v1" }}
+{{- if and (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1alpha3/BackendTLSPolicy") (not (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1/BackendTLSPolicy")) }}
+{{- $backendTLSPolicyVersion = "gateway.networking.k8s.io/v1alpha3" }}
+{{- end }}
+{{- end }}
+{{- $tlsRouteVersion := $gateway.apiVersions.tlsRoute }}
+{{- if not $tlsRouteVersion }}
+{{- $tlsRouteVersion = "gateway.networking.k8s.io/v1alpha2" }}
+{{- if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1/TLSRoute" }}
+{{- $tlsRouteVersion = "gateway.networking.k8s.io/v1" }}
+{{- end }}
+{{- end }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    {{- toYaml $gateway.parentRefs | nindent 4 }}
+  hostnames:
+    - {{ .Values.ingress.hostName }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ $serviceName }}
+          port: {{ .Values.ports.https }}
+      {{- with $gateway.sessionPersistence }}
+      sessionPersistence:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- range $name, $port := .Values.extraPorts }}
+    {{- if $port.ingress }}
+    {{- $backend := include "nifi.extraPortBackend" (list $ $port) | fromJson }}
+    {{- $pathType := $port.ingress.pathType | default "Exact" }}
+    - matches:
+        - path:
+            type: {{ eq $pathType "Prefix" | ternary "PathPrefix" $pathType }}
+            value: {{ $port.ingress.path | quote }}
+      backendRefs:
+        - name: {{ $backend.name }}
+          port: {{ $backend.port }}
+    {{- end }}
+    {{- end }}
+{{- if .Values.metrics.enabled }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullName }}-metrics
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    {{- toYaml $metricsParentRefs | nindent 4 }}
+  hostnames:
+    - {{ include "nifi.metricsHostName" . }}
+  rules:
+    {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
+    - matches:
+        - path:
+            type: Exact
+            value: /{{ $fullName }}-{{ $i }}
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /nifi-api/flow/metrics/prometheus
+      backendRefs:
+        - name: {{ $fullName }}-{{ $i }}
+          port: {{ $.Values.ports.https }}
+    {{- end }}
+{{- end }}
+---
+{{- /* NiFi only serves HTTPS, so the Gateway must connect to it using TLS */}}
+apiVersion: {{ $backendTLSPolicyVersion }}
+kind: BackendTLSPolicy
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "nifi.labels" . | nindent 4 }}
+spec:
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: {{ $serviceName }}
+    {{- if .Values.metrics.enabled }}
+    {{- range $i, $e := until (int .Values.global.nifi.nodeCount) }}
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}-{{ $i }}
+    {{- end }}
+    {{- end }}
+  validation:
+    caCertificateRefs:
+      {{- if $gateway.backendTLS.caCertificateRefs }}
+      {{- toYaml $gateway.backendTLS.caCertificateRefs | nindent 6 }}
+      {{- else }}
+      - group: ""
+        kind: Secret
+        name: {{ $fullName }}-tls
+      {{- end }}
+    hostname: {{ $serviceName }}.{{ .Release.Namespace }}
+{{- with $gateway.siteToSite.parentRefs }}
+{{- /*
+Site-to-site uses TLS passthrough, so the remote NiFi authenticates directly with each node using its client certificate.
+The routes use their own Services, which the BackendTLSPolicy doesn't target: some implementations (such as Envoy Gateway)
+apply a BackendTLSPolicy to TLSRoute backends too, wrapping the passed-through connection in a second TLS session.
+*/}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-s2s
+  labels:
+    {{- include "nifi.labels" $ | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $.Values.ports.https }}
+      targetPort: https
+      protocol: TCP
+      name: https
+  selector:
+    {{- include "nifi.selectorLabels" $ | nindent 4 }}
+{{- range $i, $e := until (int $.Values.global.nifi.nodeCount) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-s2s-{{ $i }}
+  labels:
+    {{- include "nifi.labels" $ | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $.Values.ports.https }}
+      targetPort: https
+      protocol: TCP
+      name: https
+  selector:
+    statefulset.kubernetes.io/pod-name: {{ $fullName }}-{{ $i }}
+    {{- include "nifi.selectorLabels" $ | nindent 4 }}
+{{- end }}
+---
+apiVersion: {{ $tlsRouteVersion }}
+kind: TLSRoute
+metadata:
+  name: {{ $fullName }}-s2s
+  labels:
+    {{- include "nifi.labels" $ | nindent 4 }}
+spec:
+  parentRefs:
+    {{- toYaml . | nindent 4 }}
+  hostnames:
+    - {{ include "nifi.siteToSiteHostName" $ }}
+  rules:
+    - backendRefs:
+        - name: {{ $fullName }}-s2s
+          port: {{ $.Values.ports.https }}
+{{- $parentRefs := . }}
+{{- range $i, $e := until (int $.Values.global.nifi.nodeCount) }}
+---
+apiVersion: {{ $tlsRouteVersion }}
+kind: TLSRoute
+metadata:
+  name: {{ $fullName }}-s2s-{{ $i }}
+  labels:
+    {{- include "nifi.labels" $ | nindent 4 }}
+spec:
+  parentRefs:
+    {{- toYaml $parentRefs | nindent 4 }}
+  hostnames:
+    - {{ printf "%s-%d.%s" $fullName $i (include "nifi.siteToSiteHostName" $) }}
+  rules:
+    - backendRefs:
+        - name: {{ $fullName }}-s2s-{{ $i }}
+          port: {{ $.Values.ports.https }}
+{{- end }}
+{{- end }}
+{{- /* Allow Gateways in other namespaces to use the chart's certificate (listener certificate or backend client certificate) */}}
+{{- if $gateway.createReferenceGrant }}
+{{- $namespaces := list }}
+{{- range (concat $gateway.parentRefs $metricsParentRefs (default (list) $gateway.siteToSite.parentRefs)) }}
+{{- if and .namespace (ne .namespace $.Release.Namespace) }}
+{{- $namespaces = append $namespaces .namespace }}
+{{- end }}
+{{- end }}
+{{- with ($namespaces | uniq) }}
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: {{ $fullName }}-tls
+  labels:
+    {{- include "nifi.labels" $ | nindent 4 }}
+spec:
+  from:
+    {{- range . }}
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: {{ . }}
+    {{- end }}
+  to:
+    - group: ""
+      kind: Secret
+      name: {{ $fullName }}-tls
+{{- end }}
+{{- end }}
+{{- end }}

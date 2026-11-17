@@ -218,12 +218,77 @@ extraTakeOwnershipPaths: [ ]
 #  - /data/vol-1
 
 ingress:
+  # Set to `false` to create no routing resources (equivalent to `controller: custom`)
   enabled: true
-  ingressClassName: nginx
+  # How NiFi is exposed outside the cluster. See the README for each option's prerequisites.
+  #   nginx   - Ingresses for ingress-nginx. ingress-nginx is end-of-life, so prefer another option.
+  #   traefik - Ingresses and CRDs (ServersTransport, Middleware, TLSOption, IngressRouteTCP) for Traefik v3
+  #   gateway - Gateway API HTTPRoutes, TLSRoutes and a BackendTLSPolicy, attached to an existing Gateway
+  #   custom  - No routing resources. Define your own, for example with `extraObjects`.
+  controller: nginx
+  # Ingress class used by the `nginx` and `traefik` controllers. Defaults to the controller name.
+  ingressClassName: ""
+  # External host names apply to every controller. NiFi only accepts requests for these host names, and they're
+  # included in the certificates issued to the nodes.
   hostName: example.com # nifi.example.com
   siteToSite:
     subDomain: s2s # Subdomain for site-to-site traffic (e.g. s2s.example.com)
+  # Annotations to add to the UI Ingress or HTTPRoute (and the site-to-site Ingress, for `nginx`)
   annotations: { }
+
+  traefik:
+    # Entry points to serve on. They must accept TLS connections. Leave empty to use all entry points.
+    entryPoints:
+      - websecure
+
+  gateway:
+    # Gateway listener(s) for HTTPS traffic to the UI, metrics and `extraPorts` Ingress paths. Required.
+    # The listener terminates TLS for `ingress.hostName` and the metrics host name. It can use the chart's `<release>-tls` secret.
+    parentRefs: [ ]
+    #  - name: shared-gateway
+    #    namespace: gateway-system
+    #    sectionName: https
+    metrics:
+      # Gateway listener(s) for the metrics host name. Defaults to `parentRefs`.
+      # NiFi only returns metrics to an authorised client, so the Gateway must present a client certificate (such as the
+      # `<release>-tls` secret) to NiFi. Use a separate Gateway for this: a Gateway's backend client certificate applies to
+      # every route attached to it, which would authenticate UI users as the certificate's identity.
+      parentRefs: [ ]
+    siteToSite:
+      # Gateway listener(s) with `protocol: TLS` and `tls.mode: Passthrough` that accept the site-to-site host names
+      # (`s2s.<hostName>` and `*.s2s.<hostName>`). Leave empty to create no site-to-site routes.
+      parentRefs: [ ]
+      #  - name: shared-gateway
+      #    namespace: gateway-system
+      #    sectionName: s2s
+    # Keeps each session on the same node, which NiFi requires: login tokens are only valid on the node that issued them.
+    # `sessionPersistence` is in the Gateway API experimental channel. If your Gateway implementation doesn't support it,
+    # configure session affinity in the implementation instead, or users will be logged out at random.
+    sessionPersistence:
+      sessionName: nifi-session
+      type: Cookie
+    # CA certificates the Gateway uses to verify NiFi's server certificate. Defaults to the `ca.crt` of the chart's
+    # `<release>-tls` secret. Use a ConfigMap if your Gateway implementation doesn't support Secret references.
+    backendTLS:
+      caCertificateRefs: [ ]
+      #  - group: ""
+      #    kind: ConfigMap
+      #    name: nifi-ca
+    # Create a ReferenceGrant so Gateways in other namespaces (from `parentRefs`) can use the `<release>-tls` secret
+    createReferenceGrant: true
+    # Override the API versions detected from the cluster (useful with `helm template`)
+    apiVersions:
+      backendTLSPolicy: "" # gateway.networking.k8s.io/v1
+      tlsRoute: "" # gateway.networking.k8s.io/v1alpha2
+
+# Additional Kubernetes manifests to deploy with the chart, such as custom Ingresses or routes.
+# Each entry is either an object or a string, and is rendered as a template.
+extraObjects: [ ]
+#  - apiVersion: networking.k8s.io/v1
+#    kind: Ingress
+#    metadata:
+#      name: '{{ include "nifi.fullname" . }}-custom'
+#    spec: { }
 
 jvmHeap:
   min: 512m
