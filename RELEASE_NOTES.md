@@ -1,17 +1,20 @@
 # Breaking changes
-* Removed NiFi Registry, which is deprecated in NiFi 2. The chart no longer deploys it or configures NiFi to use it, and the `nifi_registry` values are no longer used. Migrate flow versioning to a Git-based flow registry client (such as GitHub, GitLab or Bitbucket) before upgrading.
-* `shutdown.podTerminationGracePeriodSeconds` now defaults to `300` (previously `60`). The chart fails to render if it isn't at least 40 seconds longer than `shutdown.gracefulShutdownSeconds`. Increase any lower override before upgrading.
-* A PodDisruptionBudget (`maxUnavailable: 1`) is now created by default, so `kubectl drain` evicts only one NiFi pod at a time. Disable with `podDisruptionBudget.enabled: false`.
-* Removed the `ui.refreshInterval` value. NiFi 2 no longer supports `nifi.ui.autorefresh.interval`.
+* `ingress.enabled: false` now disables routing. Previously it was ignored and the chart always created its Ingresses. If you set it to `false`, remove the override (or set it to `true`) before upgrading to keep your Ingresses.
 
 # Enhancements
-* Support NiFi 2.12.0
-* The pre-stop hook stops waiting before the pod's termination grace period ends. This leaves `gracefulShutdownSeconds` + 10 seconds for NiFi to stop, instead of the pod being killed mid-shutdown.
-* The pre-stop hook logs a warning to `logs/k8s-pre-stop.log` when it gives up waiting for the node to disconnect or offload.
+* Choose how NiFi is exposed with `ingress.controller`, so you can move off ingress-nginx, which is end-of-life. The default (`nginx`) is unchanged. See [Exposing NiFi](README.md#exposing-nifi).
+  * `traefik`: Ingresses plus the Traefik v3 resources they need, including TLS passthrough for site-to-site.
+  * `gateway`: Gateway API `HTTPRoute`s, `TLSRoute`s and a `BackendTLSPolicy`, attached to a Gateway you manage. Sessions stay on one node with a cookie (`ingress.gateway.sessionPersistence`), and metrics can use a separate Gateway (`ingress.gateway.metrics.parentRefs`).
+  * `custom`: the chart creates no routing resources, so you can define your own.
+* Deploy additional manifests, such as your own Ingresses or routes, with `extraObjects`.
+* `ingress.ingressClassName` now defaults to the controller's name.
+* Node certificates now include the site-to-site host names, and NiFi also routes site-to-site requests by their `Host` header, for controllers that pass TLS through.
+* Added an end-to-end test suite, which deploys the chart to a local kind cluster and tests it with each controller. See [tests/e2e](tests/e2e/README.md).
 
 # Bug fixes
-* Pre-stop could wait indefinitely for a node to disconnect or offload. Its retry limit only counted failed API calls, so the pod was killed at the end of its grace period.
-* Pre-stop now detects a failed disconnect. Previously it always went on to offload the node.
-* Pre-stop now finishes when the node has offloaded but the cluster coordinator didn't record it. This happens intermittently when the node being stopped is the coordinator: the cluster reports the node as `DISCONNECTED` instead of `OFFLOADED`.
+* `extraPorts` entries with a `nodePort` and an `ingress` path were routed to a `<release>-nodeport` Service, which doesn't exist.
 
-**Full Changelog**: https://github.com/gradata-systems/nifi-helm-chart/compare/v0.28.0...v1.0.0
+# Notes
+* With `nginx`, the site-to-site Ingress needs ingress-nginx to allow snippet annotations at risk level `Critical`. See the [README](README.md#nginx-default).
+
+**Full Changelog**: https://github.com/gradata-systems/nifi-helm-chart/compare/v1.0.0...v1.1.0
